@@ -1,0 +1,40 @@
+{
+  "name": "@hookscope/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookscope/shared": "workspace:*",
+    "next": "^14.2.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.21.49",
+    "@tanstack/react-query": "^5.62.9",
+    "reactflow": "^11.11.4",
+    "d3": "^7.9.0",
+    "lucide-react": "^0.474.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.5",
+    "recharts": "^2.14.1",
+    "react-syntax-highlighter": "^15.6.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@types/d3": "^7.4.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "typescript": "^5.7.2",
+    "tailwindcss": "^3.4.17",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.21"
+  }
+}

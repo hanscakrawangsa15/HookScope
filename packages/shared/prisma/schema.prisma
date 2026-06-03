@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Core: Hook ───────────────────────────────────────────────────────────────
+
+model Hook {
+  id                    String         @id @default(uuid())
+  address               String
+  chainId               Int
+  name                  String?
+  description           String?
+  deployedAt            DateTime?
+  deployTxHash          String?
+  deployBlockNumber     BigInt?
+  deployer              String?
+  bytecodeHash          String?
+  isVerified            Boolean        @default(false)
+  proxyType             ProxyType      @default(NONE)
+  implementationAddress String?
+
+  // Callbacks decoded from address bitmask (immutable after deploy)
+  beforeInitialize                   Boolean @default(false)
+  afterInitialize                    Boolean @default(false)
+  beforeAddLiquidity                 Boolean @default(false)
+  afterAddLiquidity                  Boolean @default(false)
+  beforeRemoveLiquidity              Boolean @default(false)
+  afterRemoveLiquidity               Boolean @default(false)
+  beforeSwap                         Boolean @default(false)
+  afterSwap                          Boolean @default(false)
+  beforeDonate                       Boolean @default(false)
+  afterDonate                        Boolean @default(false)
+  beforeSwapReturnsDelta             Boolean @default(false)
+  afterSwapReturnsDelta              Boolean @default(false)
+  afterAddLiquidityReturnsDelta      Boolean @default(false)
+  afterRemoveLiquidityReturnsDelta   Boolean @default(false)
+
+  // Security
+  riskLevel    RiskLevel   @default(UNKNOWN)
+  hookScore    Int?        // 0-100
+  auditStatus  AuditStatus @default(UNAUDITED)
+
+  // Indexer state
+  lastIndexedAt         DateTime?
+  lastAnalyzedAt        DateTime?
+  indexerVersion        Int            @default(1)
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  // Relations
+  functions       HookFunction[]
+  securityReport  SecurityReport?
+  auditRecords    AuditRecord[]
+  analytics       HookAnalytics?
+  pools           Pool[]
+  sourceFiles     SourceFile[]
+  securityFlags   SecurityFlag[]
+  indexerJobs     IndexerJob[]
+
+  @@unique([address, chainId])
+  @@index([chainId])
+  @@index([auditStatus])
+  @@index([riskLevel])
+  @@index([hookScore])
+  @@index([deployedAt])
+  @@map("hooks")
+}
+
+// ─── Hook functions extracted from ABI / source ───────────────────────────────
+
+model HookFunction {
+  id             String   @id @default(uuid())
+  hookId         String
+  name           String
+  signature      String
+  selector       String   // 4-byte hex selector
+  params         Json     @default("[]")
+  returns        Json     @default("[]")
+  visibility     String   @default("public")
+  stateMutability String  @default("nonpayable")
+  natspec        String?
+  isCallback     Boolean  @default(false) // is a uniswap lifecycle callback
+
+  hook           Hook     @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@unique([hookId, selector])
+  @@index([hookId])
+  @@map("hook_functions")
+}
+
+// ─── Source files (from Etherscan verification) ───────────────────────────────
+
+model SourceFile {
+  id       String @id @default(uuid())
+  hookId   String
+  fileName String
+  content  String @db.Text
+  language String @default("solidity")
+
+  hook     Hook   @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@index([hookId])
+  @@map("source_files")
+}
+
+// ─── Security analysis ────────────────────────────────────────────────────────
+
+model SecurityReport {
+  id             String    @id @default(uuid())
+  hookId         String    @unique
+  score          Int       // 0-100, higher = safer
+  callbackScore  Int       @default(0) // risk from callback combination
+  slitherRaw     Json?     // raw slither JSON output
+  findings       Int       @default(0)
+  criticalCount  Int       @default(0)
+  highCount      Int       @default(0)
+  mediumCount    Int       @default(0)
+  lowCount       Int       @default(0)
+  infoCount      Int       @default(0)
+  hasSelfdestruct Boolean  @default(false)
+  hasDelegatecall Boolean  @default(false)
+  hasUpgradeable  Boolean  @default(false)
+  hasFlashLoan    Boolean  @default(false)
+  hasReentrancy   Boolean  @default(false)
+  analyzedAt     DateTime  @default(now())
+
+  hook           Hook      @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@map("security_reports")
+}
+
+model SecurityFlag {
+  id          String    @id @default(uuid())
+  hookId      String
+  category    String
+  severity    RiskLevel
+  description String
+  location    String?
+  source      String    @default("slither") // slither | community | manual
+  reportedBy  String?
+  createdAt   DateTime  @default(now())
+
+  hook        Hook      @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@index([hookId])
+  @@index([severity])
+  @@map("security_flags")
+}
+
+// ─── Audit records ────────────────────────────────────────────────────────────
+
+model AuditRecord {
+  id         String    @id @default(uuid())
+  hookId     String
+  auditor    String
+  reportUrl  String?
+  auditDate  DateTime
+  summary    String?
+  createdAt  DateTime  @default(now())
+
+  hook       Hook      @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@index([hookId])
+  @@map("audit_records")
+}
+
+// ─── On-chain analytics ───────────────────────────────────────────────────────
+
+model HookAnalytics {
+  id          String   @id @default(uuid())
+  hookId      String   @unique
+  tvlUsd      Float    @default(0)
+  volume7dUsd Float    @default(0)
+  volume30dUsd Float   @default(0)
+  poolCount   Int      @default(0)
+  uniqueLps   Int      @default(0)
+  swapCount   BigInt   @default(0)
+  updatedAt   DateTime @default(now())
+
+  hook        Hook     @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@map("hook_analytics")
+}
+
+// ─── Pools ────────────────────────────────────────────────────────────────────
+
+model Pool {
+  id           String   @id @default(uuid())
+  poolId       String   // Uniswap v4 PoolId (bytes32)
+  hookId       String
+  chainId      Int
+  token0       String
+  token1       String
+  token0Symbol String?
+  token1Symbol String?
+  fee          Int
+  tickSpacing  Int
+  tvlUsd       Float?
+  deployedAt   DateTime?
+  deployBlockNumber BigInt?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hook         Hook     @relation(fields: [hookId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, chainId])
+  @@index([hookId])
+  @@index([chainId])
+  @@map("pools")
+}
+
+// ─── Indexer state tracking ───────────────────────────────────────────────────
+
+model IndexerJob {
+  id            String      @id @default(uuid())
+  chainId       Int
+  hookId        String?
+  jobType       String      // "INITIAL_SCAN" | "ANALYZE" | "SECURITY_SCAN" | "ANALYTICS"
+  status        JobStatus   @default(PENDING)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  errorMessage  String?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  hook          Hook?       @relation(fields: [hookId], references: [id], onDelete: SetNull)
+
+  @@index([chainId, status])
+  @@index([hookId])
+  @@map("indexer_jobs")
+}
+
+model IndexerCheckpoint {
+  id          String   @id @default(uuid())
+  chainId     Int      @unique
+  blockNumber BigInt
+  updatedAt   DateTime @default(now())
+
+  @@map("indexer_checkpoints")
+}
+
+// ─── Token cache ──────────────────────────────────────────────────────────────
+
+model Token {
+  id       String @id @default(uuid())
+  address  String
+  chainId  Int
+  symbol   String
+  name     String
+  decimals Int    @default(18)
+  logoUrl  String?
+
+  @@unique([address, chainId])
+  @@map("tokens")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  UNKNOWN
+}
+
+enum AuditStatus {
+  AUDITED
+  UNAUDITED
+  FLAGGED
+  IN_PROGRESS
+}
+
+enum ProxyType {
+  NONE
+  EIP1967
+  EIP1822
+  MINIMAL_PROXY
+  CUSTOM
+  UNKNOWN
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}

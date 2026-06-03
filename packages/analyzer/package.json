@@ -1,0 +1,30 @@
+{
+  "name": "@hookscope/analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookscope/shared": "workspace:*",
+    "@prisma/client": "^6.1.0",
+    "viem": "^2.21.49",
+    "p-limit": "^6.1.0",
+    "p-retry": "^6.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.1"
+  }
+}

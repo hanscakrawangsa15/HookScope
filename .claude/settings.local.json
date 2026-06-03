@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/hans/Xenorize/HookScope/apps/api/src/routes && echo \"done\")",
+      "Bash(docker compose *)"
+    ],
+    "additionalDirectories": [
+      "/home/hans/Xenorize/HookScope/apps/api/src"
+    ]
+  }
+}
