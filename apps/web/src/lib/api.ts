@@ -49,6 +49,7 @@ export interface SecurityFlag {
   description: string;
   location: string | null;
   source: string;
+  reportedBy: string | null;
 }
 
 export interface AuditRecord {
@@ -76,14 +77,31 @@ export interface PaginatedHooks {
   totalPages: number;
 }
 
+export interface TopHookEntry {
+  address: string;
+  name: string | null;
+  chainId: number;
+  riskLevel: string;
+  hookScore: number | null;
+  tvlUsd: number;
+  poolCount: number;
+  swapCount: number;
+  volume7dUsd: number;
+  volume30dUsd: number;
+}
+
 export interface GlobalStats {
   totalHooks: number;
   verifiedHooks: number;
+  unverifiedHooks: number;
   auditedHooks: number;
   flaggedHooks: number;
   totalPools: number;
   hooksByChain: Record<string, number>;
   hooksByRisk: Record<string, number>;
+  recentHooks: Array<{ address: string; name: string | null; chainId: number; deployedAt: string | null; hookScore: number | null }>;
+  topByTvl: TopHookEntry[];
+  topByActivity: TopHookEntry[];
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

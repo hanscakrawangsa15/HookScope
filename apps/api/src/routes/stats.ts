@@ -10,6 +10,23 @@ statsRouter.get("/", async (c) => {
   const cached = await cacheGet(cacheKey);
   if (cached) return c.json(cached);
 
+  const hookAnalyticsSelect = {
+    address: true,
+    name: true,
+    chainId: true,
+    riskLevel: true,
+    hookScore: true,
+    analytics: {
+      select: {
+        tvlUsd: true,
+        poolCount: true,
+        swapCount: true,
+        volume7dUsd: true,
+        volume30dUsd: true,
+      },
+    },
+  } as const;
+
   const [
     totalHooks,
     verifiedHooks,
@@ -19,6 +36,8 @@ statsRouter.get("/", async (c) => {
     hooksByChain,
     hooksByRisk,
     recentHooks,
+    topByTvlRaw,
+    topByActivityRaw,
   ] = await Promise.all([
     prisma.hook.count(),
     prisma.hook.count({ where: { isVerified: true } }),
@@ -32,7 +51,34 @@ statsRouter.get("/", async (c) => {
       take: 5,
       select: { address: true, name: true, chainId: true, deployedAt: true, hookScore: true },
     }),
+    // Top 10 by TVL
+    prisma.hook.findMany({
+      where: { analytics: { tvlUsd: { gt: 0 } } },
+      orderBy: { analytics: { tvlUsd: "desc" } },
+      take: 10,
+      select: hookAnalyticsSelect,
+    }),
+    // Top 10 by swap activity (swapCount desc, then pool count)
+    prisma.hook.findMany({
+      where: { analytics: { swapCount: { gt: 0 } } },
+      orderBy: { analytics: { swapCount: "desc" } },
+      take: 10,
+      select: hookAnalyticsSelect,
+    }),
   ]);
+
+  const serializeHook = (h: typeof topByTvlRaw[0]) => ({
+    address: h.address,
+    name: h.name,
+    chainId: h.chainId,
+    riskLevel: h.riskLevel,
+    hookScore: h.hookScore,
+    tvlUsd: h.analytics?.tvlUsd ?? 0,
+    poolCount: h.analytics?.poolCount ?? 0,
+    swapCount: Number(h.analytics?.swapCount ?? 0),
+    volume7dUsd: h.analytics?.volume7dUsd ?? 0,
+    volume30dUsd: h.analytics?.volume30dUsd ?? 0,
+  });
 
   const stats = {
     totalHooks,
@@ -50,6 +96,8 @@ statsRouter.get("/", async (c) => {
       return acc;
     }, {} as Record<string, number>),
     recentHooks,
+    topByTvl: topByTvlRaw.map(serializeHook),
+    topByActivity: topByActivityRaw.map(serializeHook),
   };
 
   await cacheSet(cacheKey, stats, 300); // cache 5 minutes

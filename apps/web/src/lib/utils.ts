@@ -55,7 +55,10 @@ export function chainIcon(chainId: number): string {
 }
 
 export function formatTvl(usd: number | null): string {
-  if (usd === null) return "—";
+  if (usd === null || !isFinite(usd)) return "—";
+  // Sanity cap: values above $100T are data errors, not real TVL
+  if (usd > 100_000_000_000_000) return "—";
+  if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`;
   if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`;
   if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
   return `$${usd.toFixed(0)}`;

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
+import { LiveAnalyticsBar } from "@/components/analytics/live-analytics-bar";
 
 export const metadata: Metadata = {
   title: { default: "HookScope", template: "%s | HookScope" },
@@ -8,20 +10,25 @@ export const metadata: Metadata = {
   keywords: ["Uniswap v4", "hooks", "DeFi", "transparency", "smart contracts"],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body>
         <Navbar />
+        <LiveAnalyticsBar />
         <main className="min-h-screen">{children}</main>
-        <footer className="border-t border-white/10 py-8 mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
-            <p>HookScope — Uniswap v4 Hook Transparency Platform</p>
-            <p className="mt-1">Data sourced from on-chain events. Not financial advice.</p>
+        <footer className="mt-20 py-10"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(6,9,16,0.6)" }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="gradient-text font-bold text-sm">HookScope</span>
+                <span className="text-gray-700 text-xs">Uniswap v4 Hook Transparency Platform</span>
+              </div>
+              <p className="text-gray-700 text-xs">
+                Data sourced on-chain · Not financial advice · Open source
+              </p>
+            </div>
           </div>
         </footer>
       </body>

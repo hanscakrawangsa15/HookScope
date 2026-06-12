@@ -1,8 +1,14 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+config({ path: resolve(__dirname, "../../../.env") });
 import { PrismaClient } from "@prisma/client";
 import { buildChainConfigs } from "./chain-config.js";
 import { PoolIndexer } from "./pool-indexer.js";
 import { JobWorker } from "./job-worker.js";
+import { AnalyticsService } from "./analytics-service.js";
 
 async function main() {
   console.log("HookScope Indexer starting...");
@@ -18,6 +24,10 @@ async function main() {
   console.log(`Indexing ${configs.length} chain(s): ${configs.map((c) => c.chain.name).join(", ")}`);
 
   const worker = new JobWorker(configs, prisma);
+  const analytics = new AnalyticsService(prisma);
+
+  // Start analytics refresh (every 5 min)
+  analytics.start(5 * 60 * 1000);
 
   // Run all indexers + job worker in parallel
   await Promise.all([

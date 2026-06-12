@@ -20,6 +20,10 @@ export interface ScoringInput {
   highFindings: number;
   mediumFindings?: number;
   isAudited?: boolean;
+  // Threat intelligence flags (GoPlus / community reports)
+  hasCriticalThreat?: boolean; // phishing, sanctions, honeypot, cybercrime
+  hasHighThreat?: boolean;     // money laundering, financial crime, darkweb, etc.
+  hasMediumThreat?: boolean;   // mixer, gas abuse, malicious mining
 }
 
 export function computeHookScore(input: ScoringInput): number {
@@ -47,6 +51,12 @@ export function computeHookScore(input: ScoringInput): number {
   score -= input.criticalFindings * 20;
   score -= input.highFindings * 10;
   score -= (input.mediumFindings ?? 0) * 3;
+
+  // Threat intelligence penalties (external community/intel reports)
+  // These override most other signals — a phishing address cannot score above 15
+  if (input.hasCriticalThreat) score = Math.min(score, 15) - 35;
+  else if (input.hasHighThreat) score -= 40;
+  else if (input.hasMediumThreat) score -= 20;
 
   // Audit bonus
   if (input.isAudited) score = Math.min(100, score + 15);

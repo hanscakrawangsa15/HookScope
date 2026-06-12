@@ -97,15 +97,17 @@ export const POOL_MANAGER_ABI = [
   },
 ] as const;
 
-// ─── Etherscan-compatible API base URLs ──────────────────────────────────────
+// ─── Etherscan-compatible API base URLs (V2 where applicable) ────────────────
+// Etherscan V2: single endpoint, requires chainid= param.
+// Chain-specific explorers (Basescan, Arbiscan) still use their own endpoints.
 
 export const EXPLORER_API_URLS: Record<number, string> = {
-  1: "https://api.etherscan.io/api",
-  8453: "https://api.basescan.org/api",
-  42161: "https://api.arbiscan.io/api",
-  10: "https://api-optimistic.etherscan.io/api",
-  11155111: "https://api-sepolia.etherscan.io/api",
-  84532: "https://api-sepolia.basescan.org/api",
+  1:        "https://api.etherscan.io/v2/api?chainid=1",
+  8453:     "https://api.basescan.org/api",
+  42161:    "https://api.arbiscan.io/api",
+  10:       "https://api-optimistic.etherscan.io/api",
+  11155111: "https://api.etherscan.io/v2/api?chainid=11155111",
+  84532:    "https://api-sepolia.basescan.org/api",
 };
 
 // ─── 4byte.directory for selector lookup ─────────────────────────────────────
