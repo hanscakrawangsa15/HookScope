@@ -1,4 +1,4 @@
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 let redis: Redis | null = null;
 
@@ -10,7 +10,7 @@ export function getRedis(): Redis | null {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
     });
-    redis.on("error", (err) => {
+    redis.on("error", (err: Error) => {
       console.warn("[Redis] Connection error (cache disabled):", err.message);
       redis = null;
     });

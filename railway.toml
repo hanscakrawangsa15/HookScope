@@ -1,6 +1,5 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @hookscope/shared db:generate && pnpm --filter @hookscope/shared build && pnpm --filter @hookscope/api build"
 
 [deploy]
 startCommand = "node apps/api/dist/index.js"

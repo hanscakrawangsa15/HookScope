@@ -41,11 +41,12 @@ hooksRouter.get("/", zValidator("query", HookListQuerySchema), async (c) => {
     ];
   }
 
-  const orderByMap: Record<string, Record<string, string>> = {
-    tvl: { analytics: { tvlUsd: query.order } },
-    newest: { deployedAt: query.order },
-    riskScore: { hookScore: query.order },
-    poolCount: { analytics: { poolCount: query.order } },
+  const ord = query.order as "asc" | "desc";
+  const orderByMap: Record<string, unknown> = {
+    tvl:       { analytics: { tvlUsd: ord } },
+    newest:    { deployedAt: ord },
+    riskScore: { hookScore: ord },
+    poolCount: { analytics: { poolCount: ord } },
   };
 
   const [total, hooks] = await Promise.all([
