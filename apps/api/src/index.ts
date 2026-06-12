@@ -83,7 +83,8 @@ app.onError((err, c) => {
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const port = Number(process.env.API_PORT ?? 3001);
+// Render injects PORT; fallback to API_PORT for local dev
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`HookScope API running on http://localhost:${info.port}`);
