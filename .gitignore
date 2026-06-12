@@ -7,3 +7,5 @@ dist/
 .turbo/
 prisma/migrations/
 *.db
+.vercel
+.vercel/
