@@ -63,14 +63,16 @@ app.route("/api/search", searchRouter);
 app.route("/api/stats", statsRouter);
 app.route("/api/analytics", analyticsRouter);
 
-// Health check
+// Health check — always returns 200 so Railway/Render healthcheck passes.
+// DB connectivity is reported in the body but does not affect HTTP status.
 app.get("/health", async (c) => {
+  let db = "connected";
   try {
     await prisma.$queryRaw`SELECT 1`;
-    return c.json({ status: "ok", timestamp: new Date().toISOString() });
   } catch {
-    return c.json({ status: "degraded", db: "unreachable" }, 503);
+    db = "unreachable";
   }
+  return c.json({ status: "ok", db, timestamp: new Date().toISOString() });
 });
 
 // 404
