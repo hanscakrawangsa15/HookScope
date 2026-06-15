@@ -24,7 +24,8 @@
     "index-abis": "tsx src/index-abis.ts",
     "populate-callbacks": "tsx src/populate-callbacks.ts",
     "sync-hooklist": "tsx src/sync-hooklist.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed-solana": "tsx src/solana-indexer.ts"
   },
   "dependencies": {
     "@hookscope/shared": "workspace:*",

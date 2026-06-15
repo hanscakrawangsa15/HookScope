@@ -77,12 +77,18 @@ hooksRouter.get("/", zValidator("query", HookListQuerySchema), async (c) => {
   return c.json(response);
 });
 
+// Accepts both EVM (0x hex) and Solana (base58) addresses
+const addressSchema = z.string().regex(
+  /^(0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/,
+  "Must be a valid EVM (0x…) or Solana (base58) address"
+);
+
 // ── GET /hooks/:address — Full hook detail ────────────────────────────────────
 hooksRouter.get(
   "/:address",
   zValidator(
     "param",
-    z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) })
+    z.object({ address: addressSchema })
   ),
   zValidator("query", z.object({ chainId: z.coerce.number().optional() })),
   async (c) => {
@@ -148,7 +154,7 @@ hooksRouter.get(
 // ── GET /hooks/:address/source — Source code files ───────────────────────────
 hooksRouter.get(
   "/:address/source",
-  zValidator("param", z.object({ address: z.string() })),
+  zValidator("param", z.object({ address: addressSchema })),
   zValidator("query", z.object({ chainId: z.coerce.number().optional() })),
   async (c) => {
     const { address } = c.req.valid("param");
@@ -179,7 +185,7 @@ hooksRouter.get(
 // ── GET /hooks/:address/security — Security report + flags ───────────────────
 hooksRouter.get(
   "/:address/security",
-  zValidator("param", z.object({ address: z.string() })),
+  zValidator("param", z.object({ address: addressSchema })),
   async (c) => {
     const { address } = c.req.valid("param");
 

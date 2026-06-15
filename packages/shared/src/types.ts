@@ -10,6 +10,8 @@ export const SUPPORTED_CHAINS = {
   optimism: 10,
   sepolia: 11155111,
   baseSepolia: 84532,
+  // Solana (non-EVM — programs indexed via REST APIs, not viem)
+  solana: 1399811149,
 } as const;
 
 export type ChainId = (typeof SUPPORTED_CHAINS)[keyof typeof SUPPORTED_CHAINS];

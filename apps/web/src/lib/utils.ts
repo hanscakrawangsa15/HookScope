@@ -38,6 +38,7 @@ export function chainName(chainId: number): string {
     10: "Optimism",
     11155111: "Sepolia",
     84532: "Base Sepolia",
+    1399811149: "Solana",
   };
   return names[chainId] ?? `Chain ${chainId}`;
 }
@@ -50,8 +51,28 @@ export function chainIcon(chainId: number): string {
     10: "🔴",
     11155111: "⟠",
     84532: "🔵",
+    1399811149: "◎",
   };
   return icons[chainId] ?? "🔗";
+}
+
+export function isSolanaAddress(address: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+}
+
+export function explorerAddressUrl(address: string, chainId: number): string {
+  if (chainId === 1399811149) {
+    return `https://solscan.io/account/${address}`;
+  }
+  const explorers: Record<number, string> = {
+    1: `https://etherscan.io/address/${address}`,
+    8453: `https://basescan.org/address/${address}`,
+    42161: `https://arbiscan.io/address/${address}`,
+    10: `https://optimistic.etherscan.io/address/${address}`,
+    11155111: `https://sepolia.etherscan.io/address/${address}`,
+    84532: `https://sepolia.basescan.org/address/${address}`,
+  };
+  return explorers[chainId] ?? `https://etherscan.io/address/${address}`;
 }
 
 export function formatTvl(usd: number | null): string {
