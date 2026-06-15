@@ -241,7 +241,7 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
 }
 
 function FilterChips({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const CHAINS   = [{ id: 1, name: "Ethereum" }, { id: 8453, name: "Base" }, { id: 42161, name: "Arbitrum" }, { id: 10, name: "Optimism" }];
+  const CHAINS   = [{ id: 1, name: "Ethereum" }, { id: 8453, name: "Base" }, { id: 42161, name: "Arbitrum" }, { id: 10, name: "Optimism" }, { id: 1399811149, name: "Solana" }];
   const RISKS    = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
   const AUDITS   = ["AUDITED", "UNAUDITED", "FLAGGED"];
 

@@ -15,6 +15,8 @@ config({ path: resolve(__dirname, "../../../.env") });
 import { PrismaClient } from "@prisma/client";
 
 const SOLANA_CHAIN_ID = 1399811149;
+// Max pools to index per DEX (avoids upserting 177K rows)
+const MAX_POOLS_PER_DEX = 500;
 
 // ── Known Solana DEX programs ────────────────────────────────────────────────
 
@@ -25,7 +27,6 @@ interface SolanaDexProgram {
   auditStatus: "AUDITED" | "UNAUDITED";
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
   hookScore: number;
-  explorerUrl: string;
 }
 
 const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
@@ -37,8 +38,6 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "AUDITED",
     riskLevel: "LOW",
     hookScore: 88,
-    explorerUrl:
-      "https://solscan.io/account/whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
   },
   {
     address: "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
@@ -48,8 +47,6 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "AUDITED",
     riskLevel: "LOW",
     hookScore: 84,
-    explorerUrl:
-      "https://solscan.io/account/CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
   },
   {
     address: "LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7",
@@ -59,8 +56,6 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "AUDITED",
     riskLevel: "LOW",
     hookScore: 82,
-    explorerUrl:
-      "https://solscan.io/account/LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7",
   },
   {
     address: "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY",
@@ -70,8 +65,6 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "AUDITED",
     riskLevel: "LOW",
     hookScore: 79,
-    explorerUrl:
-      "https://solscan.io/account/PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY",
   },
   {
     address: "obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y",
@@ -81,30 +74,31 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "UNAUDITED",
     riskLevel: "MEDIUM",
     hookScore: 64,
-    explorerUrl:
-      "https://solscan.io/account/obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y",
   },
 ];
 
 // ── API response types ────────────────────────────────────────────────────────
 
+// Orca Whirlpool API — GET https://api.mainnet.orca.so/v1/whirlpool/list
 interface OrcaWhirlpool {
   address: string;
-  tokenA: { mint: string; symbol: string; decimals: number };
-  tokenB: { mint: string; symbol: string; decimals: number };
+  tokenA: { mint: string; symbol: string };
+  tokenB: { mint: string; symbol: string };
   tvl: number;
   volume: { day: number; week: number; month: number };
-  feeRate: number;
+  lpFeeRate: number;   // e.g. 0.0004 = 0.04%
   tickSpacing: number;
 }
 interface OrcaResponse {
   whirlpools: OrcaWhirlpool[];
 }
 
+// Raydium CLMM API — GET https://api.raydium.io/v2/ammV3/ammPools
+// mintA / mintB are plain base58 address strings (not objects)
 interface RaydiumPool {
   id: string;
-  mintA: { address: string; symbol: string; decimals: number };
-  mintB: { address: string; symbol: string; decimals: number };
+  mintA: string;
+  mintB: string;
   tvl: number;
   day: { volume: number };
   week: { volume: number };
@@ -115,18 +109,13 @@ interface RaydiumResponse {
   data: RaydiumPool[];
 }
 
-interface MeteoraPair {
-  address: string;
-  name: string;
-  mint_x: string;
-  mint_y: string;
-  liquidity: string;
-  fees_24h: number;
-  trade_volume_24h: number;
-  trade_volume_7d?: number;
-  trade_volume_month?: number;
-  bin_step: number;
-  base_fee_percentage: string;
+// DeFiLlama protocol TVL (fallback for Meteora pools)
+interface DefillamaTvl {
+  date: number;
+  totalLiquidityUSD: number;
+}
+interface DefillamaProtocol {
+  tvl: DefillamaTvl[];
 }
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
@@ -146,30 +135,6 @@ async function fetchJson<T>(url: string, label: string): Promise<T | null> {
     console.warn(`[Solana] ${label} fetch failed:`, (err as Error).message);
     return null;
   }
-}
-
-async function fetchOrcaPools(): Promise<OrcaWhirlpool[]> {
-  const data = await fetchJson<OrcaResponse>(
-    "https://api.mainnet.orca.so/v1/whirlpool/list",
-    "Orca"
-  );
-  return data?.whirlpools ?? [];
-}
-
-async function fetchRaydiumPools(): Promise<RaydiumPool[]> {
-  const data = await fetchJson<RaydiumResponse>(
-    "https://api.raydium.io/v2/ammV3/ammPools",
-    "Raydium CLMM"
-  );
-  return data?.data ?? [];
-}
-
-async function fetchMeteoraPairs(): Promise<MeteoraPair[]> {
-  const data = await fetchJson<MeteoraPair[]>(
-    "https://dlmm-api.meteora.ag/pair/all",
-    "Meteora DLMM"
-  );
-  return Array.isArray(data) ? data : [];
 }
 
 // ── Upsert helpers ────────────────────────────────────────────────────────────
@@ -222,7 +187,7 @@ async function upsertPool(
   token1Symbol: string,
   fee: number,
   tickSpacing: number,
-  tvlUsd: number | null
+  tvlUsd: number
 ) {
   await prisma.pool.upsert({
     where: { poolId_chainId: { poolId, chainId: SOLANA_CHAIN_ID } },
@@ -234,138 +199,145 @@ async function upsertPool(
       token1,
       token0Symbol,
       token1Symbol,
-      fee,
-      tickSpacing,
-      tvlUsd: tvlUsd ?? 0,
+      fee: Math.max(0, Math.min(fee, 2_000_000)), // clamp to valid Int range
+      tickSpacing: Math.max(1, tickSpacing),
+      tvlUsd,
       isActive: true,
     },
     update: {
-      tvlUsd: tvlUsd ?? 0,
+      tvlUsd,
       token0Symbol,
       token1Symbol,
     },
   });
 }
 
-// ── Main indexer ──────────────────────────────────────────────────────────────
+// ── Orca indexer ──────────────────────────────────────────────────────────────
 
 async function indexOrca(prisma: PrismaClient, hookId: string) {
   console.log("[Orca] Fetching whirlpools...");
-  const pools = await fetchOrcaPools();
-  console.log(`[Orca] Got ${pools.length} pools`);
+  const data = await fetchJson<OrcaResponse>(
+    "https://api.mainnet.orca.so/v1/whirlpool/list",
+    "Orca"
+  );
+  const all = data?.whirlpools ?? [];
+  console.log(`[Orca] Got ${all.length} pools`);
+
+  // Take top pools by TVL to keep indexing fast
+  const top = [...all]
+    .sort((a, b) => (b.tvl ?? 0) - (a.tvl ?? 0))
+    .slice(0, MAX_POOLS_PER_DEX);
 
   let upserted = 0;
-  for (const p of pools) {
+  for (const p of top) {
     try {
+      // lpFeeRate is a decimal like 0.0004 → convert to micro-bps (×1_000_000)
+      const fee = Math.round((p.lpFeeRate ?? 0) * 1_000_000);
       await upsertPool(
-        prisma,
-        hookId,
+        prisma, hookId,
         p.address,
-        p.tokenA.mint,
-        p.tokenB.mint,
-        p.tokenA.symbol ?? "?",
-        p.tokenB.symbol ?? "?",
-        Math.round(p.feeRate * 1_000_000), // basis points → micro-bps
-        p.tickSpacing,
-        typeof p.tvl === "number" ? p.tvl : null
+        p.tokenA?.mint ?? "",
+        p.tokenB?.mint ?? "",
+        p.tokenA?.symbol ?? "?",
+        p.tokenB?.symbol ?? "?",
+        fee,
+        p.tickSpacing ?? 1,
+        p.tvl ?? 0,
       );
       upserted++;
-    } catch {
-      // skip individual pool errors
+    } catch (err) {
+      console.warn(`[Orca] Pool ${p.address?.slice(0, 8)} failed:`, (err as Error).message);
     }
   }
 
-  const totalTvl = pools.reduce((s, p) => s + (typeof p.tvl === "number" ? p.tvl : 0), 0);
-  const vol7d = pools.reduce((s, p) => s + (p.volume?.week ?? 0), 0);
-  const vol30d = pools.reduce((s, p) => s + (p.volume?.month ?? 0), 0);
+  const totalTvl = all.reduce((s, p) => s + (p.tvl ?? 0), 0);
+  const vol7d = all.reduce((s, p) => s + (p.volume?.week ?? 0), 0);
+  const vol30d = all.reduce((s, p) => s + (p.volume?.month ?? 0), 0);
 
   await prisma.hookAnalytics.upsert({
     where: { hookId },
-    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted },
-    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted, updatedAt: new Date() },
+    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: all.length },
+    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: all.length, updatedAt: new Date() },
   });
 
-  console.log(`[Orca] Upserted ${upserted} pools, TVL $${(totalTvl / 1e6).toFixed(1)}M`);
+  console.log(`[Orca] Upserted ${upserted}/${top.length} top pools, total TVL $${(totalTvl / 1e6).toFixed(1)}M`);
 }
+
+// ── Raydium indexer ───────────────────────────────────────────────────────────
 
 async function indexRaydium(prisma: PrismaClient, hookId: string) {
   console.log("[Raydium] Fetching CLMM pools...");
-  const pools = await fetchRaydiumPools();
-  console.log(`[Raydium] Got ${pools.length} pools`);
+  const data = await fetchJson<RaydiumResponse>(
+    "https://api.raydium.io/v2/ammV3/ammPools",
+    "Raydium CLMM"
+  );
+  const all = data?.data ?? [];
+  console.log(`[Raydium] Got ${all.length} pools`);
+
+  // Sort by TVL, take top N
+  const top = [...all]
+    .sort((a, b) => (b.tvl ?? 0) - (a.tvl ?? 0))
+    .slice(0, MAX_POOLS_PER_DEX);
 
   let upserted = 0;
-  for (const p of pools) {
+  for (const p of top) {
     try {
+      // mintA / mintB are plain base58 strings — no .address or .symbol fields
+      const token0 = typeof p.mintA === "string" ? p.mintA : "";
+      const token1 = typeof p.mintB === "string" ? p.mintB : "";
+      if (!token0 || !token1) continue;
+
+      // tradeFeeRate is already in millionths (e.g. 100 = 0.01%)
+      const fee = p.ammConfig?.tradeFeeRate ?? 0;
+
       await upsertPool(
-        prisma,
-        hookId,
+        prisma, hookId,
         p.id,
-        p.mintA.address,
-        p.mintB.address,
-        p.mintA.symbol ?? "?",
-        p.mintB.symbol ?? "?",
-        Math.round((p.ammConfig?.tradeFeeRate ?? 0) * 1_000_000),
+        token0,
+        token1,
+        token0.slice(0, 6), // no symbol in API; use truncated address
+        token1.slice(0, 6),
+        fee,
         p.ammConfig?.tickSpacing ?? 1,
-        typeof p.tvl === "number" ? p.tvl : null
+        p.tvl ?? 0,
       );
       upserted++;
-    } catch {
-      // skip individual pool errors
+    } catch (err) {
+      console.warn(`[Raydium] Pool ${p.id?.slice(0, 8)} failed:`, (err as Error).message);
     }
   }
 
-  const totalTvl = pools.reduce((s, p) => s + (typeof p.tvl === "number" ? p.tvl : 0), 0);
-  const vol7d = pools.reduce((s, p) => s + (p.week?.volume ?? 0), 0);
-  const vol30d = pools.reduce((s, p) => s + (p.month?.volume ?? 0), 0);
+  const totalTvl = all.reduce((s, p) => s + (p.tvl ?? 0), 0);
+  const vol7d = all.reduce((s, p) => s + (p.week?.volume ?? 0), 0);
+  const vol30d = all.reduce((s, p) => s + (p.month?.volume ?? 0), 0);
 
   await prisma.hookAnalytics.upsert({
     where: { hookId },
-    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted },
-    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted, updatedAt: new Date() },
+    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: all.length },
+    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: all.length, updatedAt: new Date() },
   });
 
-  console.log(`[Raydium] Upserted ${upserted} pools, TVL $${(totalTvl / 1e6).toFixed(1)}M`);
+  console.log(`[Raydium] Upserted ${upserted}/${top.length} top pools, total TVL $${(totalTvl / 1e6).toFixed(1)}M`);
 }
 
+// ── Meteora indexer (TVL only — pool API unavailable) ─────────────────────────
+
 async function indexMeteora(prisma: PrismaClient, hookId: string) {
-  console.log("[Meteora] Fetching DLMM pairs...");
-  const pairs = await fetchMeteoraPairs();
-  console.log(`[Meteora] Got ${pairs.length} pairs`);
+  console.log("[Meteora] Fetching TVL from DeFiLlama...");
+  const data = await fetchJson<DefillamaProtocol>(
+    "https://api.llama.fi/protocol/meteora-dlmm",
+    "Meteora via DeFiLlama"
+  );
 
-  let upserted = 0;
-  for (const p of pairs) {
-    try {
-      const tvl = parseFloat(p.liquidity) || null;
-      const [symX, symY] = (p.name ?? "?/?").split("-");
-      await upsertPool(
-        prisma,
-        hookId,
-        p.address,
-        p.mint_x,
-        p.mint_y,
-        symX?.trim() ?? "?",
-        symY?.trim() ?? "?",
-        Math.round(parseFloat(p.base_fee_percentage ?? "0") * 10_000),
-        p.bin_step,
-        tvl
-      );
-      upserted++;
-    } catch {
-      // skip individual pair errors
-    }
-  }
-
-  const totalTvl = pairs.reduce((s, p) => s + (parseFloat(p.liquidity) || 0), 0);
-  const vol7d = pairs.reduce((s, p) => s + (p.trade_volume_7d ?? p.trade_volume_24h * 7), 0);
-  const vol30d = pairs.reduce((s, p) => s + (p.trade_volume_month ?? p.trade_volume_24h * 30), 0);
+  const latestTvl = data?.tvl?.at(-1)?.totalLiquidityUSD ?? 0;
 
   await prisma.hookAnalytics.upsert({
     where: { hookId },
-    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted },
-    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: upserted, updatedAt: new Date() },
+    create: { hookId, tvlUsd: latestTvl, volume7dUsd: 0, volume30dUsd: 0, poolCount: 0 },
+    update: { tvlUsd: latestTvl, updatedAt: new Date() },
   });
 
-  console.log(`[Meteora] Upserted ${upserted} pairs, TVL $${(totalTvl / 1e6).toFixed(1)}M`);
+  console.log(`[Meteora] TVL $${(latestTvl / 1e6).toFixed(1)}M (pool API unavailable, TVL from DeFiLlama)`);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -376,19 +348,19 @@ async function main() {
   console.log("Solana indexer connected to DB");
 
   try {
-    // Upsert all 5 programs first
+    // Register all 5 programs as hooks
     const hookIds: Record<string, string> = {};
     for (const prog of SOLANA_DEX_PROGRAMS) {
       hookIds[prog.address] = await upsertProgram(prisma, prog);
-      console.log(`[Solana] Registered program: ${prog.name} (${prog.address.slice(0, 8)}...)`);
+      console.log(`[Solana] Registered: ${prog.name}`);
     }
 
-    // Index pools for the three API-supported programs
+    // Index pools/TVL for each program
     await indexOrca(prisma, hookIds["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"]);
     await indexRaydium(prisma, hookIds["CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"]);
     await indexMeteora(prisma, hookIds["LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7"]);
 
-    console.log("Solana indexer done.");
+    console.log("\nSolana indexer done.");
   } finally {
     await prisma.$disconnect();
   }
