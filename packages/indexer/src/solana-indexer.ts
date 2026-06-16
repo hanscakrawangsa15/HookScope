@@ -3,8 +3,9 @@
  *
  * Treats major Solana AMM/DEX programs as "hooks" — each program defines
  * swap/liquidity logic the same way Uniswap v4 hooks do.
- * Programs: Orca Whirlpool, Raydium CLMM, Raydium AMM v4, Meteora DLMM,
- *   Meteora DAMM V1/V2, PumpSwap, Phoenix DEX, Openbook V2
+ * Programs (14): Orca Whirlpool, Raydium CLMM, Raydium AMM v4, Raydium CPMM,
+ *   Meteora DLMM, Meteora DAMM V1/V2, PumpSwap, Jupiter Perp,
+ *   Serum v3, Saber, Drift, Phoenix DEX, Openbook V2
  * Pools/TVL fetched from public REST APIs; no Solana RPC required.
  */
 import { config } from "dotenv";
@@ -112,6 +113,51 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "UNAUDITED",
     riskLevel: "MEDIUM",
     hookScore: 64,
+  },
+  {
+    address: "PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu",
+    name: "Jupiter Perpetual Exchange",
+    description:
+      "Jupiter Perps is Solana's largest perpetuals DEX, powered by the JLP liquidity pool. Traders can open leveraged long/short positions in SOL, BTC, ETH, and other assets. The JLP pool acts as the counterparty, earning fees from swaps, borrows, and liquidations. Audited by OtterSec and Offside Labs.",
+    auditStatus: "AUDITED",
+    riskLevel: "MEDIUM",
+    hookScore: 81,
+  },
+  {
+    address: "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
+    name: "Raydium CPMM",
+    description:
+      "Raydium Constant Product Market Maker — Raydium's modern permissionless XYK AMM launched in late 2024. Unlike AMM v4 (which routes through Serum order books), CPMM is a pure constant-product AMM with customizable fee tiers, no order book dependency, and support for token2022 assets. Audited by OtterSec.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 83,
+  },
+  {
+    address: "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
+    name: "Serum v3",
+    description:
+      "Project Serum v3 — the original fully on-chain central limit order book (CLOB) on Solana, built by FTX/Alameda. Despite the FTX collapse, the protocol continues operating autonomously. Serum's order matching engine and settlement hooks inspired subsequent Solana DEX designs including OpenBook and Raydium. Governance is now community-led.",
+    auditStatus: "UNAUDITED",
+    riskLevel: "HIGH",
+    hookScore: 40,
+  },
+  {
+    address: "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+    name: "Saber",
+    description:
+      "Saber is Solana's leading stable-asset AMM, optimized for trading between assets of similar value: stablecoins (USDC/USDT), wrapped tokens (wBTC/renBTC), and liquid staking tokens (stSOL/mSOL). Uses a StableSwap invariant (similar to Curve Finance) that minimizes slippage for pegged pairs. Audited by Certik.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 70,
+  },
+  {
+    address: "dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH",
+    name: "Drift Protocol",
+    description:
+      "Drift is a decentralized perpetuals and spot exchange on Solana using a cross-margining engine. It features a dynamic AMM (DAMM) as the backstop liquidity provider, complemented by a Decentralized Limit Order Book (DLOB) for limit orders. Supports up to 20x leverage on major assets. Audited by OtterSec and Halborn.",
+    auditStatus: "AUDITED",
+    riskLevel: "MEDIUM",
+    hookScore: 76,
   },
 ];
 
@@ -418,7 +464,7 @@ async function main() {
   console.log("Solana indexer connected to DB");
 
   try {
-    // Register all 9 programs as hooks
+    // Register all 14 programs as hooks
     const hookIds: Record<string, string> = {};
     for (const prog of SOLANA_DEX_PROGRAMS) {
       hookIds[prog.address] = await upsertProgram(prisma, prog);
@@ -433,6 +479,11 @@ async function main() {
     await indexDeFiLlamaTvl(prisma, hookIds["Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vB"], "meteora-damm-v1", "Meteora DAMM V1");
     await indexDeFiLlamaTvl(prisma, hookIds["cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"], "meteora-damm-v2", "Meteora DAMM V2");
     await indexDeFiLlamaTvl(prisma, hookIds["pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"], "pumpswap", "PumpSwap");
+    await indexDeFiLlamaTvl(prisma, hookIds["PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu"], "jupiter-perpetual-exchange", "Jupiter Perp");
+    await indexDeFiLlamaTvl(prisma, hookIds["9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"], "serum", "Serum v3");
+    await indexDeFiLlamaTvl(prisma, hookIds["SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ"], "saber", "Saber");
+    await indexDeFiLlamaTvl(prisma, hookIds["dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH"], "drift-trade", "Drift");
+    // Raydium CPMM: no public TVL API or DeFiLlama slug — registered without TVL data
 
     console.log("\nSolana indexer done.");
   } finally {
