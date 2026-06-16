@@ -1,9 +1,11 @@
 /**
  * Solana DEX Program Indexer
  *
- * Treats major Solana AMM programs (Orca Whirlpools, Raydium CLMM, Meteora DLMM)
- * as "hooks" — each program defines swap/liquidity logic the same way Uniswap v4
- * hooks do. Pools are fetched from public REST APIs; no Solana RPC required.
+ * Treats major Solana AMM/DEX programs as "hooks" — each program defines
+ * swap/liquidity logic the same way Uniswap v4 hooks do.
+ * Programs: Orca Whirlpool, Raydium CLMM, Raydium AMM v4, Meteora DLMM,
+ *   Meteora DAMM V1/V2, PumpSwap, Phoenix DEX, Openbook V2
+ * Pools/TVL fetched from public REST APIs; no Solana RPC required.
  */
 import { config } from "dotenv";
 import { resolve } from "node:path";
@@ -49,6 +51,15 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     hookScore: 84,
   },
   {
+    address: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+    name: "Raydium AMM v4",
+    description:
+      "Raydium's original constant-product AMM (AMM v4) — the most widely used liquidity layer on Solana. Routes swaps through Serum/OpenBook order books for capital efficiency. Supports any SPL token pair with permissionless pool creation. One of the first audited AMMs on Solana.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 86,
+  },
+  {
     address: "LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7",
     name: "Meteora DLMM",
     description:
@@ -56,6 +67,33 @@ const SOLANA_DEX_PROGRAMS: SolanaDexProgram[] = [
     auditStatus: "AUDITED",
     riskLevel: "LOW",
     hookScore: 82,
+  },
+  {
+    address: "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vB",
+    name: "Meteora DAMM V1",
+    description:
+      "Meteora Dynamic AMM V1 — a constant-product AMM with yield-bearing vault integration. Idle liquidity is automatically deposited into lending protocols to earn additional yield for LPs while maintaining swap functionality. Audited by OtterSec.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 78,
+  },
+  {
+    address: "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+    name: "Meteora DAMM V2",
+    description:
+      "Meteora Dynamic AMM V2 — an improved version of the DAMM protocol with enhanced fee mechanics, multi-hop routing support, and better composability with other Solana DeFi protocols. Supports alpha vaults and customizable fee structures.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 80,
+  },
+  {
+    address: "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+    name: "PumpSwap",
+    description:
+      "PumpSwap is pump.fun's native constant-product AMM, launched March 2025. When a bonding curve token graduates from pump.fun, its liquidity migrates automatically to PumpSwap. Enables permissionless trading for all graduated meme tokens with 0.25% swap fees.",
+    auditStatus: "AUDITED",
+    riskLevel: "LOW",
+    hookScore: 72,
   },
   {
     address: "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY",
@@ -109,7 +147,7 @@ interface RaydiumResponse {
   data: RaydiumPool[];
 }
 
-// DeFiLlama protocol TVL (fallback for Meteora pools)
+// DeFiLlama protocol TVL (fallback when pool API is unavailable)
 interface DefillamaTvl {
   date: number;
   totalLiquidityUSD: number;
@@ -117,6 +155,7 @@ interface DefillamaTvl {
 interface DefillamaProtocol {
   tvl: DefillamaTvl[];
 }
+
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
@@ -340,6 +379,37 @@ async function indexMeteora(prisma: PrismaClient, hookId: string) {
   console.log(`[Meteora] TVL $${(latestTvl / 1e6).toFixed(1)}M (pool API unavailable, TVL from DeFiLlama)`);
 }
 
+// ── Raydium AMM v4 indexer (uses DeFiLlama — pairs API is 200MB+ and too slow) ─
+
+async function indexRaydiumAmm(prisma: PrismaClient, hookId: string) {
+  await indexDeFiLlamaTvl(prisma, hookId, "raydium-amm", "Raydium AMM v4");
+}
+
+// ── Generic DeFiLlama TVL indexer (for programs without public pool API) ──────
+
+async function indexDeFiLlamaTvl(
+  prisma: PrismaClient,
+  hookId: string,
+  slug: string,
+  label: string,
+) {
+  console.log(`[${label}] Fetching TVL from DeFiLlama (slug: ${slug})...`);
+  const data = await fetchJson<DefillamaProtocol>(
+    `https://api.llama.fi/protocol/${slug}`,
+    label
+  );
+
+  const latestTvl = data?.tvl?.at(-1)?.totalLiquidityUSD ?? 0;
+
+  await prisma.hookAnalytics.upsert({
+    where: { hookId },
+    create: { hookId, tvlUsd: latestTvl, volume7dUsd: 0, volume30dUsd: 0, poolCount: 0 },
+    update: { tvlUsd: latestTvl, updatedAt: new Date() },
+  });
+
+  console.log(`[${label}] TVL $${(latestTvl / 1e6).toFixed(1)}M (pool API unavailable, TVL from DeFiLlama)`);
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 async function main() {
@@ -348,7 +418,7 @@ async function main() {
   console.log("Solana indexer connected to DB");
 
   try {
-    // Register all 5 programs as hooks
+    // Register all 9 programs as hooks
     const hookIds: Record<string, string> = {};
     for (const prog of SOLANA_DEX_PROGRAMS) {
       hookIds[prog.address] = await upsertProgram(prisma, prog);
@@ -358,7 +428,11 @@ async function main() {
     // Index pools/TVL for each program
     await indexOrca(prisma, hookIds["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"]);
     await indexRaydium(prisma, hookIds["CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"]);
+    await indexRaydiumAmm(prisma, hookIds["675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"]);
     await indexMeteora(prisma, hookIds["LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7"]);
+    await indexDeFiLlamaTvl(prisma, hookIds["Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vB"], "meteora-damm-v1", "Meteora DAMM V1");
+    await indexDeFiLlamaTvl(prisma, hookIds["cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"], "meteora-damm-v2", "Meteora DAMM V2");
+    await indexDeFiLlamaTvl(prisma, hookIds["pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"], "pumpswap", "PumpSwap");
 
     console.log("\nSolana indexer done.");
   } finally {
