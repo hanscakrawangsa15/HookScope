@@ -296,13 +296,16 @@ analyticsRouter.get("/pool-state/:address", async (c) => {
 });
 
 // ── Arbitrage: supported chains (no hardcoded pool IDs — selected dynamically from DB) ──
-interface ChainCfg { chainId: number; name: string; color: string; viemChain: Chain }
+interface ChainCfg { chainId: number; name: string; color: string; viemChain: Chain | null; isSolana?: boolean }
+
+const SOLANA_CHAIN_ID = 1399811149;
 
 const CHAIN_CFGS: ChainCfg[] = [
-  { chainId: 1,     name: "Ethereum", color: "#9b9ea6", viemChain: mainnet  },
-  { chainId: 42161, name: "Arbitrum", color: "#f5a623", viemChain: arbitrum },
-  { chainId: 8453,  name: "Base",     color: "#4f8ef7", viemChain: base     },
-  { chainId: 10,    name: "Optimism", color: "#f54261", viemChain: optimism },
+  { chainId: 1,               name: "Ethereum", color: "#9b9ea6", viemChain: mainnet  },
+  { chainId: 42161,           name: "Arbitrum", color: "#f5a623", viemChain: arbitrum },
+  { chainId: 8453,            name: "Base",     color: "#4f8ef7", viemChain: base     },
+  { chainId: 10,              name: "Optimism", color: "#f54261", viemChain: optimism },
+  { chainId: SOLANA_CHAIN_ID, name: "Solana",   color: "#9945FF", viemChain: null, isSolana: true },
 ];
 
 // RPC URLs — set in .env for reliable providers (Alchemy/Infura); public nodes as fallback
@@ -442,6 +445,40 @@ async function getEthPriceFromDeFiLlama(): Promise<number> {
   }
 }
 
+// ── Solana: SOL/USDC spot price from DeFiLlama (cached 30s) ─────────────────
+let solPriceCache: { price: number; ts: number } = { price: 0, ts: 0 };
+
+async function getSolanaPrice(): Promise<number> {
+  if (Date.now() - solPriceCache.ts < 30_000 && solPriceCache.price > 0) return solPriceCache.price;
+  try {
+    const res = await fetch("https://coins.llama.fi/prices/current/coingecko:solana", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return solPriceCache.price;
+    const data = await res.json() as { coins: Record<string, { price: number }> };
+    const price = data.coins["coingecko:solana"]?.price ?? 0;
+    if (price > 0) solPriceCache = { price, ts: Date.now() };
+    return price;
+  } catch {
+    return solPriceCache.price;
+  }
+}
+
+// ── Solana: total TVL from our DB (sum of all indexed hook analytics) ────────
+async function getSolanaTvl(): Promise<number> {
+  try {
+    const result = await prisma.$queryRaw<[{ total: number }]>`
+      SELECT COALESCE(SUM(ha."tvlUsd"), 0)::float8 AS total
+      FROM hook_analytics ha
+      JOIN hooks h ON h.id = ha."hookId"
+      WHERE h."chainId" = ${SOLANA_CHAIN_ID}
+    `;
+    return result[0]?.total ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 // ── Read getSlot0 from PoolManager for a specific poolId ─────────────────────
 async function readPoolPrice(
   poolId: string, cfg: ChainCfg,
@@ -472,11 +509,13 @@ async function readPoolPrice(
   }
 }
 
-// ── GET /analytics/arbitrage — multi-chain ETH/USDC price + TVL snapshot ──────
+// ── GET /analytics/arbitrage — multi-chain price + TVL snapshot ───────────────
 analyticsRouter.get("/arbitrage", async (c) => {
   const t = Date.now() / 1000;
 
-  // 1. Aggregate ALL ETH/USDC pools from DB per chain → total TVL + best pool for price
+  const evmCfgs = CHAIN_CFGS.filter((cfg) => !cfg.isSolana);
+
+  // 1. Aggregate ETH/USDC pools from DB for EVM chains
   const dbRows = await prisma.$queryRaw<Array<{
     chainId: number;
     totalTvl: number;
@@ -497,10 +536,10 @@ analyticsRouter.get("/arbitrage", async (c) => {
 
   const dbByChain = Object.fromEntries(dbRows.map((r) => [Number(r.chainId), r]));
 
-  // 2. On-chain prices + DeFiLlama ETH spot + v4 TVL + Graph prices (parallel)
-  const [onchainResults, llamaPrice, tvlResult, graphPrices] = await Promise.all([
+  // 2. Parallel fetch: EVM on-chain prices, ETH spot, Uniswap TVL, Graph prices, Solana data
+  const [onchainResults, llamaPrice, tvlResult, graphPrices, solPrice, solTvl] = await Promise.all([
     Promise.all(
-      CHAIN_CFGS.map((cfg) => {
+      evmCfgs.map((cfg) => {
         const best = dbByChain[cfg.chainId];
         if (!best?.bestPoolId) return Promise.resolve({ price: 0, tick: null, source: "failed" as const });
         return readPoolPrice(best.bestPoolId, cfg);
@@ -509,12 +548,15 @@ analyticsRouter.get("/arbitrage", async (c) => {
     getEthPriceFromDeFiLlama(),
     getUniswapV4TvlByChain(),
     getV4PricesFromGraph(),
+    getSolanaPrice(),
+    getSolanaTvl(),
   ]);
 
   const { tvl: externalTvl, source: tvlProvider } = tvlResult;
   const phaseMap: Record<number, number> = { 1: 0, 42161: Math.PI / 3, 8453: (2 * Math.PI) / 3, 10: Math.PI };
 
-  const chains = CHAIN_CFGS.map((cfg, i) => {
+  // Build EVM chain entries
+  const evmChains = evmCfgs.map((cfg, i) => {
     const { price: onPrice, tick, source: onSrc } = onchainResults[i];
     const db = dbByChain[cfg.chainId];
 
@@ -522,15 +564,12 @@ analyticsRouter.get("/arbitrage", async (c) => {
     let source: "onchain" | "estimated" | "graph";
 
     if (onSrc === "onchain" && onPrice > 0) {
-      // Priority 1: direct on-chain RPC read (Alchemy/Infura)
       price = onPrice;
       source = "onchain";
     } else if (graphPrices[cfg.chainId]) {
-      // Priority 2: The Graph sqrtPrice (Ethereum + Arbitrum confirmed)
       price = graphPrices[cfg.chainId];
       source = "graph";
     } else {
-      // Priority 3: DeFiLlama spot + chain-specific simulation noise
       const base = llamaPrice > 0 ? llamaPrice : 3_500;
       const drift = Math.sin(t / 90 + (phaseMap[cfg.chainId] ?? 0)) * 0.0035;
       const noise = (Math.random() - 0.5) * 0.0018;
@@ -538,9 +577,7 @@ analyticsRouter.get("/arbitrage", async (c) => {
       source = "estimated";
     }
 
-    // TVL priority: DeFiLlama > DB aggregated ETH/USDC
-    const tvlUsd    = externalTvl[cfg.chainId] ?? db?.totalTvl ?? 0;
-    const tvlSource = externalTvl[cfg.chainId] ? tvlProvider : "db";
+    const tvlUsd = externalTvl[cfg.chainId] ?? db?.totalTvl ?? 0;
 
     return {
       chainId:   cfg.chainId,
@@ -551,15 +588,37 @@ analyticsRouter.get("/arbitrage", async (c) => {
       source,
       fee:       db?.bestFee ?? 0,
       tvlUsd,
-      tvlSource,
+      asset:     "ETH/USDC",
     };
   });
 
-  const prices = chains.map((ch) => ch.price);
-  const maxPrice    = Math.max(...prices);
-  const minPrice    = Math.min(...prices);
-  const avgPrice    = prices.reduce((s, p) => s + p, 0) / prices.length;
-  const maxSpread   = maxPrice - minPrice;
+  // Build Solana entry — SOL/USDC price, TVL from our indexed hook analytics
+  const solanaPhase = (3 * Math.PI) / 2;
+  const solBasePrice = solPrice > 0 ? solPrice : 150;
+  const solNoise = (Math.random() - 0.5) * 0.0008;
+  const solDrift = Math.sin(t / 90 + solanaPhase) * 0.0008;
+  const solSimulatedPrice = parseFloat((solBasePrice * (1 + solDrift + solNoise)).toFixed(4));
+
+  const solanaEntry = {
+    chainId: SOLANA_CHAIN_ID,
+    name:    "Solana",
+    color:   "#9945FF",
+    price:   solSimulatedPrice,
+    tick:    null,
+    source:  solPrice > 0 ? "estimated" as const : "estimated" as const,
+    fee:     0,
+    tvlUsd:  solTvl,
+    asset:   "SOL/USDC",
+  };
+
+  const chains = [...evmChains, solanaEntry];
+
+  // Spread calc only on EVM chains (same asset ETH/USDC)
+  const evmPrices = evmChains.map((ch) => ch.price);
+  const maxPrice     = Math.max(...evmPrices);
+  const minPrice     = Math.min(...evmPrices);
+  const avgPrice     = evmPrices.reduce((s, p) => s + p, 0) / evmPrices.length;
+  const maxSpread    = maxPrice - minPrice;
   const maxSpreadPct = avgPrice > 0 ? (maxSpread / avgPrice) * 100 : 0;
 
   return c.json({
@@ -570,6 +629,7 @@ analyticsRouter.get("/arbitrage", async (c) => {
     feeThreshold:      0.05,
     aboveFeeThreshold: maxSpreadPct > 0.05,
     avgPrice:          parseFloat(avgPrice.toFixed(2)),
+    solPrice:          solSimulatedPrice,
   });
 });
 
