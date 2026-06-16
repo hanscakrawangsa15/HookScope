@@ -151,9 +151,14 @@ analyticsRouter.get("/global", async (c) => {
   });
 });
 
+// EVM addresses are case-insensitive (stored lowercase); Solana base58 are case-sensitive.
+function normalizeAddress(address: string): string {
+  return address.startsWith("0x") ? address.toLowerCase() : address;
+}
+
 // ── GET /analytics/hook/:address — hook-specific analytics ───────────────────
 analyticsRouter.get("/hook/:address", async (c) => {
-  const address = c.req.param("address").toLowerCase();
+  const address = normalizeAddress(c.req.param("address"));
 
   const hook = await prisma.hook.findFirst({
     where: { address },
@@ -188,7 +193,7 @@ analyticsRouter.get("/hook/:address", async (c) => {
 //   getLiquidity → liquidity
 //   getFeeGrowthGlobals → cumulative fees → est. fee APY
 analyticsRouter.get("/pool-state/:address", async (c) => {
-  const address = c.req.param("address").toLowerCase();
+  const address = normalizeAddress(c.req.param("address"));
 
   const pools = await prisma.pool.findMany({
     where: { hook: { address }, isActive: true },

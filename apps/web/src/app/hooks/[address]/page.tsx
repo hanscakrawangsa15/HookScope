@@ -66,8 +66,9 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
     .filter(([, v]) => v)
     .map(([k]) => k);
 
-  const hasWarning = activeCallbacks.some((cb) => CALLBACK_DOCS[cb]?.risk === "high");
-  const hasDeltaReturns = activeCallbacks.some((cb) => CALLBACK_DOCS[cb]?.category === "delta");
+  // Solana programs have all swap/liquidity callbacks set but they are not EVM risk flags
+  const hasWarning = !isSolana && activeCallbacks.some((cb) => CALLBACK_DOCS[cb]?.risk === "high");
+  const hasDeltaReturns = !isSolana && activeCallbacks.some((cb) => CALLBACK_DOCS[cb]?.category === "delta");
 
   // Auto-generate hook description from on-chain data
   const hookDesc = describeHook({

@@ -152,8 +152,10 @@ export function HookAnalyticsPanel({ address }: { address: string }) {
 
       {pools.length === 0 && tvl === 0 && (
         <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
-          <Loader2 size={12} className="animate-spin" />
-          Analytics engine is fetching on-chain data... refresh in 30s
+          {data
+            ? <span className="text-gray-600">Tidak ada data pool yang diindeks untuk program ini.</span>
+            : <><Loader2 size={12} className="animate-spin" /> Analytics engine is fetching on-chain data... refresh in 30s</>
+          }
         </div>
       )}
     </div>
