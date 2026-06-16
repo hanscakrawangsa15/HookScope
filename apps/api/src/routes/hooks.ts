@@ -83,6 +83,12 @@ const addressSchema = z.string().regex(
   "Must be a valid EVM (0x…) or Solana (base58) address"
 );
 
+// EVM addresses are case-insensitive (stored lowercase in DB).
+// Solana base58 addresses are case-sensitive — never lowercase them.
+function normalizeAddress(address: string): string {
+  return address.startsWith("0x") ? address.toLowerCase() : address;
+}
+
 // ── GET /hooks/:address — Full hook detail ────────────────────────────────────
 hooksRouter.get(
   "/:address",
@@ -94,13 +100,13 @@ hooksRouter.get(
   async (c) => {
     const { address } = c.req.valid("param");
     const { chainId } = c.req.valid("query");
-    const cacheKey = `hook:${address.toLowerCase()}:${chainId ?? "any"}`;
+    const cacheKey = `hook:${normalizeAddress(address)}:${chainId ?? "any"}`;
 
     const cached = await cacheGet(cacheKey);
     if (cached) return c.json(cached);
 
     const where: Record<string, unknown> = {
-      address: address.toLowerCase(),
+      address: normalizeAddress(address),
     };
     if (chainId) where.chainId = chainId;
 
@@ -124,12 +130,13 @@ hooksRouter.get(
       return c.json({ error: "Hook not found" }, 404);
     }
 
-    // Find similar hooks by callback overlap
-    const callbacks = decodeHookFlags(hook.address as `0x${string}`);
-    const activeCallbacks = getActiveCallbackNames(callbacks);
-
-    const similarHooks = activeCallbacks.length > 0
-      ? await prisma.hook.findMany({
+    // Similar hooks: EVM uses address bitmask; Solana uses same-chain callback match
+    let similarHooks: Awaited<ReturnType<typeof prisma.hook.findMany>> = [];
+    if (hook.address.startsWith("0x")) {
+      const callbacks = decodeHookFlags(hook.address as `0x${string}`);
+      const activeCallbacks = getActiveCallbackNames(callbacks);
+      if (activeCallbacks.length > 0) {
+        similarHooks = await prisma.hook.findMany({
           where: {
             id: { not: hook.id },
             chainId: hook.chainId,
@@ -138,8 +145,17 @@ hooksRouter.get(
           include: { analytics: true },
           take: 5,
           orderBy: { hookScore: "desc" },
-        })
-      : [];
+        });
+      }
+    } else {
+      // Solana: find other programs on same chain
+      similarHooks = await prisma.hook.findMany({
+        where: { id: { not: hook.id }, chainId: hook.chainId },
+        include: { analytics: true },
+        take: 5,
+        orderBy: { hookScore: "desc" },
+      });
+    }
 
     const response = {
       ...mapHookDetail(hook),
@@ -161,7 +177,7 @@ hooksRouter.get(
     const { chainId } = c.req.valid("query");
 
     const hook = await prisma.hook.findFirst({
-      where: { address: address.toLowerCase(), ...(chainId ? { chainId } : {}) },
+      where: { address: normalizeAddress(address), ...(chainId ? { chainId } : {}) },
       include: { sourceFiles: true },
     });
 
@@ -190,7 +206,7 @@ hooksRouter.get(
     const { address } = c.req.valid("param");
 
     const hook = await prisma.hook.findFirst({
-      where: { address: address.toLowerCase() },
+      where: { address: normalizeAddress(address) },
       include: {
         securityReport: true,
         securityFlags: { orderBy: { severity: "asc" } },
@@ -228,7 +244,7 @@ hooksRouter.get(
     const { chainId, page, limit } = c.req.valid("query");
 
     const hook = await prisma.hook.findFirst({
-      where: { address: address.toLowerCase(), ...(chainId ? { chainId } : {}) },
+      where: { address: normalizeAddress(address), ...(chainId ? { chainId } : {}) },
     });
     if (!hook) return c.json({ error: "Hook not found" }, 404);
 

@@ -57,8 +57,10 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
     8453: "https://basescan.org/address",
     42161: "https://arbiscan.io/address",
     10: "https://optimistic.etherscan.io/address",
+    1399811149: "https://solscan.io/account",
   };
   const explorerUrl = `${explorerBase[hook.chainId] ?? "https://etherscan.io/address"}/${hook.address}`;
+  const isSolana = hook.chainId === 1399811149;
 
   const activeCallbacks = Object.entries(hook.callbacks)
     .filter(([, v]) => v)
@@ -347,10 +349,12 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
           {/* Callbacks dengan penjelasan */}
           <section className="card p-6">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">
-              Active Callbacks ({activeCallbacks.length}/14)
+              {isSolana ? "Program Capabilities" : `Active Callbacks (${activeCallbacks.length}/14)`}
             </h2>
             <p className="text-xs text-gray-500 mb-5">
-              Decoded dari 14 bit terakhir address — tidak bisa dipalsukan setelah deploy.
+              {isSolana
+                ? "Operasi lifecycle yang diimplementasikan oleh program Solana ini."
+                : "Decoded dari 14 bit terakhir address — tidak bisa dipalsukan setelah deploy."}
             </p>
 
             {activeCallbacks.length === 0 ? (
@@ -447,54 +451,91 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
             </section>
           )}
 
-          {/* ── ABI Explorer ──────────────────────────────────── */}
-          <section>
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Code2 size={13} className="text-yellow-400" /> ABI Explorer
-              {hook.functions.length > 0 && (
-                <span className="badge bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-[10px] ml-1">
-                  {hook.functions.length} fungsi
-                </span>
-              )}
-            </h2>
-            <AbiExplorer
-              address={hook.address}
-              name={hook.name}
-              functions={hook.functions}
-            />
-          </section>
+          {/* ── ABI Explorer (EVM only) ─────────────────────── */}
+          {!isSolana && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Code2 size={13} className="text-yellow-400" /> ABI Explorer
+                {hook.functions.length > 0 && (
+                  <span className="badge bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-[10px] ml-1">
+                    {hook.functions.length} fungsi
+                  </span>
+                )}
+              </h2>
+              <AbiExplorer
+                address={hook.address}
+                name={hook.name}
+                functions={hook.functions}
+              />
+            </section>
+          )}
 
-          {/* ── Source Code Viewer ─────────────────────────────── */}
-          <section>
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <FileCode size={13} className="text-blue-400" /> Source Code
-              {hook.isVerified && (
-                <span className="badge bg-green-500/10 text-green-400 border-green-500/20 text-[10px] ml-1">
-                  ✓ VERIFIED · {hook.sourceFiles.length} file{hook.sourceFiles.length !== 1 ? "s" : ""}
-                </span>
-              )}
-            </h2>
-            <SourceViewer
-              address={hook.address}
-              isVerified={hook.isVerified}
-              chainId={hook.chainId}
-            />
-          </section>
+          {/* ── Source Code Viewer (EVM only) ─────────────────── */}
+          {!isSolana && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <FileCode size={13} className="text-blue-400" /> Source Code
+                {hook.isVerified && (
+                  <span className="badge bg-green-500/10 text-green-400 border-green-500/20 text-[10px] ml-1">
+                    ✓ VERIFIED · {hook.sourceFiles.length} file{hook.sourceFiles.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </h2>
+              <SourceViewer
+                address={hook.address}
+                isVerified={hook.isVerified}
+                chainId={hook.chainId}
+              />
+            </section>
+          )}
 
-          {/* ── Integration Snippets ───────────────────────────── */}
-          <section>
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Terminal size={13} className="text-purple-400" /> Integration Snippets
-            </h2>
-            <CodeSnippets
-              address={hook.address}
-              name={hook.name}
-              chainId={hook.chainId}
-              callbacks={hook.callbacks}
-              poolCount={hook.poolCount}
-              functions={hook.functions}
-            />
-          </section>
+          {/* ── Solana Program Info ────────────────────────────── */}
+          {isSolana && (
+            <section className="card p-5 border-purple-500/20 bg-purple-500/5">
+              <h2 className="text-sm font-semibold text-purple-300 mb-3 flex items-center gap-2">
+                <Info size={14} /> Solana On-Chain Program
+              </h2>
+              <div className="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <p>{hook.description}</p>
+                <div className="pt-3 border-t border-white/10 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-gray-500 w-24 flex-shrink-0">Program ID</span>
+                    <span className="font-mono text-blue-400 break-all">{hook.address}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 w-24 flex-shrink-0">Explorer</span>
+                    <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline flex items-center gap-1">
+                      Solscan ↗
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 w-24 flex-shrink-0">Audit</span>
+                    <span className={hook.auditStatus === "AUDITED" ? "text-green-400" : "text-yellow-400"}>
+                      {hook.auditStatus === "AUDITED" ? "✓ Audited by third party" : hook.auditStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── Integration Snippets (EVM only) ───────────────── */}
+          {!isSolana && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Terminal size={13} className="text-purple-400" /> Integration Snippets
+              </h2>
+              <CodeSnippets
+                address={hook.address}
+                name={hook.name}
+                chainId={hook.chainId}
+                callbacks={hook.callbacks}
+                poolCount={hook.poolCount}
+                functions={hook.functions}
+              />
+            </section>
+          )}
 
         </div>
 

@@ -83,7 +83,26 @@ function anyCb(active: string[], ...names: string[]): boolean {
   return names.some((n) => active.includes(n));
 }
 
-const ARCHETYPES: Array<{ test: (a: string[]) => boolean; data: Archetype }> = [
+const SOLANA_CHAIN_ID = 1399811149;
+
+const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Archetype }> = [
+  // ── Solana programs ── must be first so they short-circuit EVM archetypes
+  {
+    test: (_a, m) => m.chainId === SOLANA_CHAIN_ID,
+    data: {
+      id: "solana_program", name: "Solana DEX Program", icon: "◎", color: "#9945FF",
+      summary: (m, a) =>
+        `Program AMM on-chain Solana yang mengimplementasikan logik swap, manajemen posisi likuiditas, ` +
+        `dan fee collection secara penuh. ` +
+        (m.name ? `${m.name} adalah salah satu DEX terbesar di ekosistem Solana. ` : "") +
+        (m.poolCount > 0
+          ? `Melayani lebih dari ${m.poolCount.toLocaleString()} pool aktif`
+          : "Pool sedang diindeks") +
+        (m.tvlUsd && m.tvlUsd > 1000
+          ? ` dengan total TVL ${formatUsdShort(m.tvlUsd)}.`
+          : "."),
+    },
+  },
   {
     test: (a) => a.length === 0,
     data: {
@@ -176,7 +195,7 @@ export function describeHook(meta: HookMeta): HookDescription {
     .map(([k]) => k);
 
   // Find archetype
-  const found = ARCHETYPES.find((a) => a.test(active));
+  const found = ARCHETYPES.find((a) => a.test(active, meta));
   const arch = found?.data ?? {
     id: "misc", name: "Multi-Purpose Hook", icon: "🪝", color: "#94a3b8",
     summary: (m: HookMeta, a: string[]) =>
@@ -202,7 +221,11 @@ export function describeHook(meta: HookMeta): HookDescription {
   }
 
   // Structural pros
-  if (meta.isVerified) pros.push("Source code terverifikasi di Etherscan — transparan dan dapat diaudit publik");
+  if (meta.isVerified) pros.push(
+    meta.chainId === SOLANA_CHAIN_ID
+      ? "Program telah diaudit oleh pihak ketiga terpercaya — transparan dan aman digunakan"
+      : "Source code terverifikasi di Etherscan — transparan dan dapat diaudit publik"
+  );
   if (meta.auditStatus === "AUDITED") pros.push("Telah melalui security audit oleh pihak ketiga");
   if (meta.proxyType === "NONE") pros.push("Non-upgradeable — logik tidak dapat diubah oleh siapapun setelah deploy");
   if (meta.poolCount >= 10) pros.push(`Teruji oleh ${meta.poolCount} pool aktif — memiliki track record nyata`);
