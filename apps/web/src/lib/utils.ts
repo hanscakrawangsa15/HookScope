@@ -75,6 +75,21 @@ export function explorerAddressUrl(address: string, chainId: number): string {
   return explorers[chainId] ?? `https://etherscan.io/address/${address}`;
 }
 
+export function explorerTxUrl(hash: string, chainId: number): string {
+  if (chainId === 1399811149) {
+    return `https://solscan.io/tx/${hash}`;
+  }
+  const explorers: Record<number, string> = {
+    1: `https://etherscan.io/tx/${hash}`,
+    8453: `https://basescan.org/tx/${hash}`,
+    42161: `https://arbiscan.io/tx/${hash}`,
+    10: `https://optimistic.etherscan.io/tx/${hash}`,
+    11155111: `https://sepolia.etherscan.io/tx/${hash}`,
+    84532: `https://sepolia.basescan.org/tx/${hash}`,
+  };
+  return explorers[chainId] ?? `https://etherscan.io/tx/${hash}`;
+}
+
 export function formatTvl(usd: number | null): string {
   if (usd === null || !isFinite(usd)) return "—";
   // Sanity cap: values above $100T are data errors, not real TVL

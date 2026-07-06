@@ -202,6 +202,26 @@ interface DefillamaProtocol {
   tvl: DefillamaTvl[];
 }
 
+// Raydium v3 unified pools API — GET https://api-v3.raydium.io/pools/info/list
+// Covers Concentrated (CLMM) + Standard (AMM v4 + CPMM) pools, distinguishable
+// only by programId. poolType=Standard alone is rejected by the API — must
+// request poolType=all and filter client-side.
+interface RaydiumV3Pool {
+  id: string;
+  programId: string;
+  mintA: { address: string; symbol: string };
+  mintB: { address: string; symbol: string };
+  feeRate: number; // decimal fraction, e.g. 0.0025 = 0.25%
+  tvl: number;
+  day: { volume: number };
+  week: { volume: number };
+  month: { volume: number };
+}
+interface RaydiumV3Response {
+  success: boolean;
+  data: { count: number; data: RaydiumV3Pool[] };
+}
+
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
@@ -425,10 +445,83 @@ async function indexMeteora(prisma: PrismaClient, hookId: string) {
   console.log(`[Meteora] TVL $${(latestTvl / 1e6).toFixed(1)}M (pool API unavailable, TVL from DeFiLlama)`);
 }
 
-// ── Raydium AMM v4 indexer (uses DeFiLlama — pairs API is 200MB+ and too slow) ─
+// ── Raydium AMM v4 + CPMM indexer (v3 unified pools API, paginated) ───────────
 
-async function indexRaydiumAmm(prisma: PrismaClient, hookId: string) {
-  await indexDeFiLlamaTvl(prisma, hookId, "raydium-amm", "Raydium AMM v4");
+const RAYDIUM_AMM_V4_PROGRAM_ID = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8";
+const RAYDIUM_CPMM_PROGRAM_ID = "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C";
+
+async function indexRaydiumStandardPools(
+  prisma: PrismaClient,
+  ammV4HookId: string,
+  cpmmHookId: string,
+) {
+  console.log("[Raydium] Fetching AMM v4 + CPMM pools from v3 API...");
+
+  const ammV4Pools: RaydiumV3Pool[] = [];
+  const cpmmPools: RaydiumV3Pool[] = [];
+  const MAX_PAGES = 30;
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const data = await fetchJson<RaydiumV3Response>(
+      `https://api-v3.raydium.io/pools/info/list?poolType=all&poolSortField=liquidity&sortType=desc&pageSize=100&page=${page}`,
+      `Raydium v3 pools page ${page}`,
+    );
+    const rows = data?.data?.data ?? [];
+    if (rows.length === 0) break;
+
+    for (const p of rows) {
+      if (p.programId === RAYDIUM_AMM_V4_PROGRAM_ID) ammV4Pools.push(p);
+      else if (p.programId === RAYDIUM_CPMM_PROGRAM_ID) cpmmPools.push(p);
+    }
+
+    if (ammV4Pools.length >= MAX_POOLS_PER_DEX && cpmmPools.length >= MAX_POOLS_PER_DEX) break;
+    if (rows.length < 100) break; // last page
+  }
+
+  console.log(`[Raydium] Got ${ammV4Pools.length} AMM v4 pools, ${cpmmPools.length} CPMM pools`);
+
+  await indexRaydiumStandardSet(prisma, ammV4HookId, ammV4Pools.slice(0, MAX_POOLS_PER_DEX), "Raydium AMM v4");
+  await indexRaydiumStandardSet(prisma, cpmmHookId, cpmmPools.slice(0, MAX_POOLS_PER_DEX), "Raydium CPMM");
+}
+
+async function indexRaydiumStandardSet(
+  prisma: PrismaClient,
+  hookId: string,
+  pools: RaydiumV3Pool[],
+  label: string,
+) {
+  let upserted = 0;
+  for (const p of pools) {
+    try {
+      const fee = Math.round((p.feeRate ?? 0) * 1_000_000);
+      await upsertPool(
+        prisma, hookId,
+        p.id,
+        p.mintA?.address ?? "",
+        p.mintB?.address ?? "",
+        p.mintA?.symbol ?? "?",
+        p.mintB?.symbol ?? "?",
+        fee,
+        1, // no tick concept for constant-product pools
+        p.tvl ?? 0,
+      );
+      upserted++;
+    } catch (err) {
+      console.warn(`[${label}] Pool ${p.id?.slice(0, 8)} failed:`, (err as Error).message);
+    }
+  }
+
+  const totalTvl = pools.reduce((s, p) => s + (p.tvl ?? 0), 0);
+  const vol7d = pools.reduce((s, p) => s + (p.week?.volume ?? 0), 0);
+  const vol30d = pools.reduce((s, p) => s + (p.month?.volume ?? 0), 0);
+
+  await prisma.hookAnalytics.upsert({
+    where: { hookId },
+    create: { hookId, tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: pools.length },
+    update: { tvlUsd: totalTvl, volume7dUsd: vol7d, volume30dUsd: vol30d, poolCount: pools.length, updatedAt: new Date() },
+  });
+
+  console.log(`[${label}] Upserted ${upserted}/${pools.length} pools, total TVL $${(totalTvl / 1e6).toFixed(1)}M`);
 }
 
 // ── Generic DeFiLlama TVL indexer (for programs without public pool API) ──────
@@ -474,7 +567,11 @@ async function main() {
     // Index pools/TVL for each program
     await indexOrca(prisma, hookIds["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"]);
     await indexRaydium(prisma, hookIds["CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"]);
-    await indexRaydiumAmm(prisma, hookIds["675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"]);
+    await indexRaydiumStandardPools(
+      prisma,
+      hookIds["675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"],
+      hookIds["CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"],
+    );
     await indexMeteora(prisma, hookIds["LBUZKhRxPF3XUpBCjp4YzTKgLe4oDxFbcH2bJFGhkr7"]);
     await indexDeFiLlamaTvl(prisma, hookIds["Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vB"], "meteora-damm-v1", "Meteora DAMM V1");
     await indexDeFiLlamaTvl(prisma, hookIds["cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"], "meteora-damm-v2", "Meteora DAMM V2");
@@ -483,7 +580,6 @@ async function main() {
     await indexDeFiLlamaTvl(prisma, hookIds["9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"], "serum", "Serum v3");
     await indexDeFiLlamaTvl(prisma, hookIds["SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ"], "saber", "Saber");
     await indexDeFiLlamaTvl(prisma, hookIds["dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH"], "drift-trade", "Drift");
-    // Raydium CPMM: no public TVL API or DeFiLlama slug — registered without TVL data
 
     console.log("\nSolana indexer done.");
   } finally {

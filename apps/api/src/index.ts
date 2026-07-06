@@ -14,9 +14,20 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import { hooksRouter } from "./routes/hooks.js";
+import { priceHistoryRouter } from "./routes/price-history.js";
 import { searchRouter } from "./routes/search.js";
 import { statsRouter } from "./routes/stats.js";
 import { analyticsRouter } from "./routes/analytics.js";
+import { swapRouter } from "./routes/swap.js";
+import { lpRouter } from "./routes/lp.js";
+import { solanaLpRouter } from "./routes/solana-lp.js";
+import { orcaSwapRouter } from "./routes/orca-swap.js";
+import { raydiumLpRouter } from "./routes/raydium-lp.js";
+import { raydiumSwapRouter } from "./routes/raydium-swap.js";
+import { raydiumAmmLpRouter } from "./routes/raydium-amm-lp.js";
+import { raydiumAmmSwapRouter } from "./routes/raydium-amm-swap.js";
+import { raydiumCpmmLpRouter } from "./routes/raydium-cpmm-lp.js";
+import { raydiumCpmmSwapRouter } from "./routes/raydium-cpmm-swap.js";
 import { prisma } from "./db.js";
 
 const app = new Hono();
@@ -59,9 +70,20 @@ app.use(
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 app.route("/api/hooks", hooksRouter);
+app.route("/api/hooks", priceHistoryRouter);
 app.route("/api/search", searchRouter);
 app.route("/api/stats", statsRouter);
 app.route("/api/analytics", analyticsRouter);
+app.route("/api/swap", swapRouter);
+app.route("/api/lp", lpRouter);
+app.route("/api/solana-lp", solanaLpRouter);
+app.route("/api/orca-swap", orcaSwapRouter);
+app.route("/api/raydium-lp", raydiumLpRouter);
+app.route("/api/raydium-swap", raydiumSwapRouter);
+app.route("/api/raydium-amm-lp", raydiumAmmLpRouter);
+app.route("/api/raydium-amm-swap", raydiumAmmSwapRouter);
+app.route("/api/raydium-cpmm-lp", raydiumCpmmLpRouter);
+app.route("/api/raydium-cpmm-swap", raydiumCpmmSwapRouter);
 
 // Health check — always returns 200 so Railway/Render healthcheck passes.
 // DB connectivity is reported in the body but does not affect HTTP status.

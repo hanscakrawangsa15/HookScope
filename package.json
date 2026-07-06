@@ -11,12 +11,17 @@
     "db:migrate": "cd packages/shared && npx prisma migrate deploy",
     "db:studio": "cd packages/shared && npx prisma studio",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.yml down"
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "anvil:start": "bash scripts/anvil-start.sh",
+    "anvil:setup": "bash scripts/anvil-setup.sh",
+    "anvil:test": "pnpm exec tsx scripts/anvil-test.ts",
+    "anvil:register": "pnpm exec tsx scripts/anvil-register.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2",
-    "@types/node": "^22.10.1"
+    "typescript": "^5.7.2"
   },
   "engines": {
     "node": ">=20.0.0",

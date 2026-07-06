@@ -2,11 +2,19 @@ import { notFound } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { ORCA_WHIRLPOOL_PROGRAM_ID, RAYDIUM_CLMM_PROGRAM_ID, RAYDIUM_AMM_V4_PROGRAM_ID, RAYDIUM_CPMM_PROGRAM_ID } from "@hookscope/shared";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { HookCard } from "@/components/hooks/hook-card";
 import { CALLBACK_DOCS, getRiskColor, getCategoryColor } from "@/lib/callback-docs";
 import { HookAnalyticsPanel } from "@/components/analytics/hook-analytics-panel";
 import { LpMetricsPanel } from "@/components/analytics/lp-metrics-panel";
+import { SwapPanel } from "@/components/swap/swap-panel";
+import { SolanaSwapPanel } from "@/components/swap/solana-swap-panel";
+import { AddLiquidityPanel } from "@/components/liquidity/add-liquidity-panel";
+import { SolanaAddLiquidityPanel } from "@/components/liquidity/solana-add-liquidity-panel";
+import { RaydiumAddLiquidityPanel } from "@/components/liquidity/raydium-add-liquidity-panel";
+import { SimpleAddLiquidityPanel } from "@/components/liquidity/simple-add-liquidity-panel";
+import { TradingPanelTabs } from "@/components/liquidity/trading-panel-tabs";
 import { describeHook } from "@/lib/hook-descriptor";
 import { SourceViewer } from "@/components/hooks/source-viewer";
 import { AbiExplorer } from "@/components/hooks/abi-explorer";
@@ -14,7 +22,7 @@ import { CodeSnippets } from "@/components/hooks/code-snippets";
 import { shortAddress, chainName, chainIcon, formatTvl, timeAgo, cn } from "@/lib/utils";
 import {
   ExternalLink, ShieldCheck, AlertTriangle,
-  Code2, GitCompare, Info, CheckCircle2, XCircle, ChevronDown,
+  Code2, GitCompare, Info, CheckCircle2, XCircle, ChevronDown, Droplets,
   ShieldAlert, Skull, ThumbsUp, ThumbsDown, Lightbulb, FileCode, Terminal
 } from "lucide-react";
 
@@ -61,6 +69,12 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
   };
   const explorerUrl = `${explorerBase[hook.chainId] ?? "https://etherscan.io/address"}/${hook.address}`;
   const isSolana = hook.chainId === 1399811149;
+  // Solana addresses are base58 and case-sensitive — unlike EVM hex addresses,
+  // never lowercase these for comparison.
+  const isOrcaWhirlpool = hook.address === ORCA_WHIRLPOOL_PROGRAM_ID;
+  const isRaydiumClmm = hook.address === RAYDIUM_CLMM_PROGRAM_ID;
+  const isRaydiumAmm = hook.address === RAYDIUM_AMM_V4_PROGRAM_ID;
+  const isRaydiumCpmm = hook.address === RAYDIUM_CPMM_PROGRAM_ID;
 
   const activeCallbacks = Object.entries(hook.callbacks)
     .filter(([, v]) => v)
@@ -190,7 +204,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-white transition-colors">Explorer</Link>
+        <Link href="/dashboard" className="hover:text-white transition-colors">Explorer</Link>
         <span>/</span>
         <span className="text-gray-300 font-mono text-xs">{shortAddress(hook.address, 10)}</span>
       </div>
@@ -256,6 +270,9 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
         </div>
 
         <div className="flex gap-2 flex-shrink-0">
+          <a href="#add-liquidity" className="btn-primary text-sm">
+            <Droplets size={14} /> Add Liquidity
+          </a>
           <Link href={`/compare?addresses=${hook.address}`} className="btn-ghost text-sm">
             <GitCompare size={14} /> Compare
           </Link>
@@ -451,6 +468,55 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
               </p>
             </section>
           )}
+
+          {/* ── Trading: candlestick chart + Swap/Add Liquidity, position management ── */}
+          <section id="add-liquidity" className="card p-5">
+            {!isSolana ? (
+              <TradingPanelTabs
+                swap={
+                  <SwapPanel hookAddress={hook.address} chainId={hook.chainId} riskLevel={hook.riskLevel} hookScore={hook.hookScore} />
+                }
+                addLiquidity={
+                  <AddLiquidityPanel hookAddress={hook.address} chainId={hook.chainId} riskLevel={hook.riskLevel} hookScore={hook.hookScore} />
+                }
+              />
+            ) : isOrcaWhirlpool ? (
+              <TradingPanelTabs
+                swap={<SolanaSwapPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="orca" />}
+                addLiquidity={<SolanaAddLiquidityPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} />}
+              />
+            ) : isRaydiumClmm ? (
+              <TradingPanelTabs
+                swap={<SolanaSwapPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="raydium" />}
+                addLiquidity={<RaydiumAddLiquidityPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} />}
+              />
+            ) : isRaydiumAmm ? (
+              <TradingPanelTabs
+                swap={<SolanaSwapPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="raydium-amm" />}
+                addLiquidity={
+                  <SimpleAddLiquidityPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="raydium-amm" />
+                }
+              />
+            ) : isRaydiumCpmm ? (
+              <TradingPanelTabs
+                swap={<SolanaSwapPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="raydium-cpmm" />}
+                addLiquidity={
+                  <SimpleAddLiquidityPanel hookAddress={hook.address} riskLevel={hook.riskLevel} hookScore={hook.hookScore} dex="raydium-cpmm" />
+                }
+              />
+            ) : (
+              <>
+                <h2 className="text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+                  <Info size={14} /> Swap &amp; Add Liquidity
+                </h2>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Swap and Add Liquidity currently support Uniswap v4 pools, Orca Whirlpool pools,
+                  and Raydium CLMM/AMM v4/CPMM pools only. Trading and LP support for other Solana DEX programs is a planned
+                  future phase and is not available here yet.
+                </p>
+              </>
+            )}
+          </section>
 
           {/* ── ABI Explorer (EVM only) ─────────────────────── */}
           {!isSolana && (

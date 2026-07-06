@@ -410,12 +410,16 @@ export default function ArbitragePage() {
             {/* Solana toggle */}
             <button
               onClick={() => setShowSolana((v) => !v)}
+              aria-pressed={showSolana}
+              aria-label="Toggle Solana price axis"
+              className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
                 background: showSolana ? "rgba(153,69,255,0.15)" : "rgba(255,255,255,0.04)",
                 border: showSolana ? "1px solid rgba(153,69,255,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 8, padding: "4px 10px", cursor: "pointer",
+                borderRadius: 8, minHeight: 36, padding: "8px 12px", cursor: "pointer",
                 color: showSolana ? "#a855f7" : "rgba(255,255,255,0.3)", fontSize: 11, fontWeight: 600,
+                transition: "background 0.2s ease, border-color 0.2s ease",
               }}
             >
               ◎ SOL axis
@@ -735,7 +739,7 @@ export default function ArbitragePage() {
           </ResponsiveContainer>
         )}
 
-        <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 10, marginTop: 8, textAlign: "right" }}>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, marginTop: 8, textAlign: "right" }}>
           TVL: Uniswap v4 DB (EVM) + Solana hook analytics · ±0.8% noise · updates every {POLL_MS / 1000}s
         </p>
       </div>
@@ -768,7 +772,8 @@ export default function ArbitragePage() {
           </span>
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <table style={{ width: "100%", minWidth: 720, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
               {["#", "Chain", "TVL (Real-Time)", "TVL Change", "Price", "Asset", "Source"].map((h) => (
@@ -896,17 +901,18 @@ export default function ArbitragePage() {
             })}
           </tbody>
         </table>
+        </div>
 
         <div style={{
           padding: "10px 20px",
           borderTop: "1px solid rgba(255,255,255,0.04)",
           display: "flex", gap: 16, alignItems: "center",
         }}>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 10 }}>
+          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 10 }}>
             TVL = DB + ±0.8% simulated noise · Solana TVL = sum of indexed DEX programs · sorted by TVL every {POLL_MS/1000}s
           </span>
           {current && (
-            <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.2)", fontSize: 11 }}>
+            <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.45)", fontSize: 11 }}>
               Updated {new Date(current.timestamp).toLocaleTimeString()}
             </span>
           )}

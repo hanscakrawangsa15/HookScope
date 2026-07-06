@@ -9,6 +9,7 @@ import { buildChainConfigs } from "./chain-config.js";
 import { PoolIndexer } from "./pool-indexer.js";
 import { JobWorker } from "./job-worker.js";
 import { AnalyticsService } from "./analytics-service.js";
+import { PriceSnapshotService } from "./price-snapshot-service.js";
 
 async function main() {
   console.log("HookScope Indexer starting...");
@@ -25,9 +26,13 @@ async function main() {
 
   const worker = new JobWorker(configs, prisma);
   const analytics = new AnalyticsService(prisma);
+  const priceSnapshots = new PriceSnapshotService(prisma);
 
   // Start analytics refresh (every 5 min)
   analytics.start(5 * 60 * 1000);
+
+  // Start price-history snapshotting for tick-based pools (every 2 min)
+  priceSnapshots.start(2 * 60 * 1000);
 
   // Run all indexers + job worker in parallel
   await Promise.all([

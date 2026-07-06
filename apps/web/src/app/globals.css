@@ -16,6 +16,10 @@
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
 @layer base {
   * { @apply border-white/[0.07]; }
 
@@ -225,3 +229,12 @@
 
 /* ── Misc ─────────────────────────────────────────────────────────────────── */
 .mono { font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace; }
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

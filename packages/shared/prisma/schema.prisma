@@ -216,6 +216,20 @@ model Pool {
   @@map("pools")
 }
 
+// ─── Pool price history (tick-based pools only) ───────────────────────────────
+
+model PoolPriceSnapshot {
+  id        String   @id @default(uuid())
+  poolId    String
+  chainId   Int
+  tick      Int
+  price     Float
+  timestamp DateTime @default(now())
+
+  @@index([poolId, chainId, timestamp])
+  @@map("pool_price_snapshots")
+}
+
 // ─── Indexer state tracking ───────────────────────────────────────────────────
 
 model IndexerJob {

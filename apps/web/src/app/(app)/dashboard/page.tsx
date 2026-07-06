@@ -35,7 +35,7 @@ function buildQS(base: Record<string, string | string[] | undefined>, overrides:
   return qs ? `?${qs}` : "";
 }
 
-export default async function ExplorerPage({ searchParams }: PageProps) {
+export default async function DashboardPage({ searchParams }: PageProps) {
   const q          = str(searchParams.q);
   const chain      = str(searchParams.chain);
   const auditStatus = str(searchParams.auditStatus);

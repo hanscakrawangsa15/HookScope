@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Search, BarChart2, GitCompare, Shield, Code2, Hexagon, Activity } from "lucide-react";
+import { ConnectButton } from "@/components/wallet/connect-button";
+import { DemoModeToggle } from "@/components/dev/demo-mode-toggle";
 
 const NAV_ITEMS = [
-  { href: "/",           label: "Explorer",   icon: Search    },
+  { href: "/dashboard",  label: "Explorer",   icon: Search    },
   { href: "/compare",    label: "Compare",    icon: GitCompare },
   { href: "/arbitrage",  label: "Arbitrage",  icon: Activity  },
   { href: "/security",   label: "Security",   icon: Shield    },
@@ -29,7 +31,7 @@ export function Navbar() {
         <div className="flex h-14 items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-black text-lg shrink-0 group">
+          <Link href="/dashboard" className="flex items-center gap-2 font-black text-lg shrink-0 group">
             <div className="relative">
               <Hexagon size={24} className="text-blue-500 group-hover:text-blue-400 transition-colors" fill="rgba(59,130,246,0.15)" />
               <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-blue-300">HS</span>
@@ -85,6 +87,9 @@ export function Navbar() {
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               <span className="hidden sm:inline">Live</span>
             </div>
+
+            <DemoModeToggle />
+            <ConnectButton variant="ghost" />
           </div>
 
         </div>

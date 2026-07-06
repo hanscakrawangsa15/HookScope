@@ -9,3 +9,16 @@ prisma/migrations/
 *.db
 .vercel
 .vercel/
+
+# ── Foundry / Anvil ────────────────────────────────────────────────────────────
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+# Keep contracts/lib/ tracked (forge submodules committed via .gitmodules)
+
+# ── Claude local settings ─────────────────────────────────────────────────────
+.claude/settings.local.json
+.claude/skills/
+
+# ── Anvil generated files ────────────────────────────────────────────────────
+/tmp/anvil*.log

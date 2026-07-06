@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck, ShieldAlert, ShieldOff, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
+import { ShieldCheck, ShieldAlert, ShieldOff, Zap, Droplets } from "lucide-react";
 import type { HookSummary } from "@/lib/api";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { CallbackGrid } from "@/components/ui/callback-grid";
@@ -26,6 +28,13 @@ const RISK_BORDER: Record<string, string> = {
 };
 
 export function HookCard({ hook, view = "grid" }: HookCardProps) {
+  const router = useRouter();
+  const goToAddLiquidity = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/hooks/${hook.address}?chain=${hook.chainId}#add-liquidity`);
+  };
+
   const auditIcon = {
     AUDITED:     <ShieldCheck size={13} className="text-green-400" />,
     IN_PROGRESS: <ShieldAlert size={13} className="text-yellow-400" />,
@@ -91,6 +100,13 @@ export function HookCard({ hook, view = "grid" }: HookCardProps) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {auditIcon}
+            <button
+              onClick={goToAddLiquidity}
+              title="Add Liquidity"
+              className="p-1 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
+            >
+              <Droplets size={13} />
+            </button>
             <RiskBadge level={hook.riskLevel} score={hook.hookScore} />
           </div>
         </div>
@@ -174,9 +190,16 @@ export function HookCard({ hook, view = "grid" }: HookCardProps) {
         <div className="mt-auto flex items-center justify-between text-[11px] text-gray-600 pt-1 border-t border-white/5">
           <span>{chainIcon(hook.chainId)} {chainName(hook.chainId)}</span>
           <span>{hook.poolCount} pools · {formatTvl(tvlUsd)}</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {auditIcon}
             <span>{timeAgo(hook.deployedAt)}</span>
+            <button
+              onClick={goToAddLiquidity}
+              title="Add Liquidity"
+              className="p-1 -mr-1 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
+            >
+              <Droplets size={13} />
+            </button>
           </div>
         </div>
       </div>
