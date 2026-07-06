@@ -1,0 +1,17 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+script = "script"
+
+# Allow the setup script to write the addresses JSON so anvil-test.ts can read it.
+fs_permissions = [{ access = "read-write", path = "./out" }]
+
+# OpenZeppelin Contracts v5 — used for ERC20 test tokens.
+# Install: forge install OpenZeppelin/openzeppelin-contracts --no-commit
+
+[rpc_endpoints]
+anvil = "http://127.0.0.1:8545"
+
+[fmt]
+line_length = 100
