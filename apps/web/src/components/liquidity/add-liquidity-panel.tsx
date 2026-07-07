@@ -15,7 +15,7 @@ import {
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { explorerTxUrl } from "@/lib/utils";
 import { ConnectButton } from "@/components/wallet/connect-button";
-import { PoolCandlestickChart } from "@/components/liquidity/pool-candlestick-chart";
+import { PoolRangeChart } from "@/components/liquidity/pool-range-chart";
 import { ManualRangeInput } from "@/components/liquidity/manual-range-input";
 import { SuggestRangeButton } from "@/components/liquidity/suggest-range-button";
 import { demoAutoApprove } from "@/lib/anvil-utils";
@@ -387,17 +387,23 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
           )}
 
           {pool && (
-            <PoolCandlestickChart
+            <PoolRangeChart
               hookAddress={hookAddress}
               poolId={pool.poolId}
-              chainId={chainId}
+              chainId={effectiveChainId}
               currentTick={currentTick}
               decimalsA={dec0}
               decimalsB={dec1}
               tickLower={ticks?.tickLower}
               tickUpper={ticks?.tickUpper}
+              tickSpacing={pool.tickSpacing}
+              minTick={MIN_TICK}
+              maxTick={MAX_TICK}
               symbolA={symbol0}
               symbolB={symbol1}
+              onRangeChange={(newLower, newUpper) => {
+                handleManualOrSuggestedTicks({ tickLower: newLower, tickUpper: newUpper });
+              }}
             />
           )}
 

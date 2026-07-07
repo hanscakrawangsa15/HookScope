@@ -10,7 +10,7 @@ import { api, type SwapPool } from "@/lib/api";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { explorerTxUrl } from "@/lib/utils";
 import { ConnectButton } from "@/components/wallet/connect-button";
-import { PoolCandlestickChart } from "@/components/liquidity/pool-candlestick-chart";
+import { PoolRangeChart } from "@/components/liquidity/pool-range-chart";
 import { ManualRangeInput } from "@/components/liquidity/manual-range-input";
 import { SuggestRangeButton } from "@/components/liquidity/suggest-range-button";
 
@@ -249,7 +249,7 @@ export function SolanaAddLiquidityPanel({ hookAddress, riskLevel, hookScore }: S
           )}
 
           {pool && (
-            <PoolCandlestickChart
+            <PoolRangeChart
               hookAddress={hookAddress}
               poolId={pool.poolId}
               chainId={SOLANA_CHAIN_ID}
@@ -258,8 +258,12 @@ export function SolanaAddLiquidityPanel({ hookAddress, riskLevel, hookScore }: S
               decimalsB={decimalsB}
               tickLower={ticks?.tickLower}
               tickUpper={ticks?.tickUpper}
+              tickSpacing={pool.tickSpacing}
+              minTick={MIN_TICK_INDEX}
+              maxTick={MAX_TICK_INDEX}
               symbolA={symbolA}
               symbolB={symbolB}
+              onRangeChange={(lo, hi) => handleManualOrSuggestedTicks({ tickLower: lo, tickUpper: hi })}
             />
           )}
 
