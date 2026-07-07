@@ -183,10 +183,16 @@ export function PoolRangeChart({
     Math.floor((i * (n - 1)) / Math.max(1, xLabelCount - 1))
   );
 
-  // Handle positions
-  const lowerY = !fullRange && priceLo != null ? yFor(Math.min(priceLo, priceHi ?? priceLo)) : null;
-  const upperY = !fullRange && priceHi != null ? yFor(Math.max(priceHi, priceLo ?? priceHi)) : null;
+  // In full-range mode, show handles at chart visual edges so user can drag
+  // inward to switch to a custom range — mirrors Uniswap V3 behavior.
+  const effectiveLowerPrice = fullRange ? minPrice + (maxPrice - minPrice) * 0.05 : (priceLo != null ? Math.min(priceLo, priceHi ?? priceLo) : null);
+  const effectiveUpperPrice = fullRange ? maxPrice - (maxPrice - minPrice) * 0.05 : (priceHi != null ? Math.max(priceHi, priceLo ?? priceHi) : null);
+
+  const lowerY = effectiveLowerPrice != null ? yFor(effectiveLowerPrice) : null;
+  const upperY = effectiveUpperPrice != null ? yFor(effectiveUpperPrice) : null;
   const currentY = livePrice != null ? yFor(livePrice) : null;
+
+  const showHandles = onRangeChange != null && (lowerY != null || upperY != null);
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
   const getSvgY = (clientY: number): number => {
@@ -224,8 +230,9 @@ export function PoolRangeChart({
           {symbolA}/{symbolB}
           {livePrice != null && (
             <span className="ml-2 font-bold text-[13px]"
-              style={{ color: inRange ? "#10b981" : "#f59e0b" }}>
-              {inRange ? "● In Range" : "○ Out of Range"} {formatPrice(livePrice)}
+              style={{ color: fullRange ? "#10b981" : inRange ? "#10b981" : "#f59e0b" }}>
+              {fullRange ? "● Full Range" : inRange ? "● In Range" : "○ Out of Range"}{" "}
+              {formatPrice(livePrice)}
             </span>
           )}
         </h3>
@@ -258,12 +265,12 @@ export function PoolRangeChart({
               stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
           ))}
 
-          {/* Range band */}
-          {!fullRange && lowerY != null && upperY != null && (
+          {/* Range band — always shown (greyed when full range) */}
+          {showHandles && lowerY != null && upperY != null && (
             <rect x={PAD_LEFT} width={plotW}
               y={Math.min(lowerY, upperY)}
               height={Math.abs(lowerY - upperY)}
-              fill={inRange ? "rgba(16,185,129,0.12)" : "rgba(99,102,241,0.10)"}
+              fill={fullRange ? "rgba(99,102,241,0.05)" : inRange ? "rgba(16,185,129,0.12)" : "rgba(99,102,241,0.10)"}
             />
           )}
 
@@ -313,38 +320,41 @@ export function PoolRangeChart({
           )}
 
           {/* ── Lower price handle ── */}
-          {!fullRange && lowerY != null && (
+          {showHandles && lowerY != null && (
             <g style={{ cursor: dragging === "lower" ? "grabbing" : "ns-resize" }}
               onMouseDown={(e) => { e.preventDefault(); setDragging("lower"); }}>
-              {/* Handle line */}
               <line x1={PAD_LEFT} x2={VIEW_W - PAD_RIGHT} y1={lowerY} y2={lowerY}
-                stroke="#6366f1" strokeWidth={2} strokeOpacity={dragging === "lower" ? 1 : 0.8} />
-              {/* Handle knob */}
-              <circle cx={PAD_LEFT + plotW * 0.15} cy={lowerY} r={6}
-                fill="#6366f1" stroke="#1f2937" strokeWidth={2} />
-              <circle cx={PAD_LEFT + plotW * 0.15} cy={lowerY} r={3} fill="white" opacity={0.6} />
+                stroke={fullRange ? "#4b5563" : "#6366f1"} strokeWidth={fullRange ? 1 : 2}
+                strokeOpacity={dragging === "lower" ? 1 : 0.8} strokeDasharray={fullRange ? "6 4" : undefined} />
+              <circle cx={PAD_LEFT + plotW * 0.15} cy={lowerY} r={7}
+                fill={fullRange ? "#374151" : "#6366f1"} stroke="#1f2937" strokeWidth={2} />
+              <circle cx={PAD_LEFT + plotW * 0.15} cy={lowerY} r={3} fill="white" opacity={fullRange ? 0.3 : 0.7} />
               {/* Label */}
-              <rect x={PAD_LEFT + 2} y={lowerY - 18} width={90} height={16} rx={3}
-                fill="#312e81" fillOpacity={0.95} />
-              <text x={PAD_LEFT + 6} y={lowerY - 7} fontSize={9} fill="#a5b4fc" fontWeight="600">
-                Min: {formatPrice(Math.min(priceLo!, priceHi ?? priceLo!))}
+              <rect x={PAD_LEFT + 2} y={lowerY - 18} width={fullRange ? 64 : 90} height={16} rx={3}
+                fill={fullRange ? "#1f2937" : "#312e81"} fillOpacity={0.95} />
+              <text x={PAD_LEFT + 6} y={lowerY - 7} fontSize={9}
+                fill={fullRange ? "#6b7280" : "#a5b4fc"} fontWeight="600">
+                {fullRange ? "← Full" : `Min: ${formatPrice(effectiveLowerPrice!)}`}
               </text>
             </g>
           )}
 
           {/* ── Upper price handle ── */}
-          {!fullRange && upperY != null && (
+          {showHandles && upperY != null && (
             <g style={{ cursor: dragging === "upper" ? "grabbing" : "ns-resize" }}
               onMouseDown={(e) => { e.preventDefault(); setDragging("upper"); }}>
               <line x1={PAD_LEFT} x2={VIEW_W - PAD_RIGHT} y1={upperY} y2={upperY}
-                stroke="#6366f1" strokeWidth={2} strokeOpacity={dragging === "upper" ? 1 : 0.8} />
-              <circle cx={PAD_LEFT + plotW * 0.85} cy={upperY} r={6}
-                fill="#6366f1" stroke="#1f2937" strokeWidth={2} />
-              <circle cx={PAD_LEFT + plotW * 0.85} cy={upperY} r={3} fill="white" opacity={0.6} />
-              <rect x={PAD_LEFT + plotW * 0.85 - 46} y={upperY + 3} width={90} height={16} rx={3}
-                fill="#312e81" fillOpacity={0.95} />
-              <text x={PAD_LEFT + plotW * 0.85 - 42} y={upperY + 14} fontSize={9} fill="#a5b4fc" fontWeight="600">
-                Max: {formatPrice(Math.max(priceHi!, priceLo ?? priceHi!))}
+                stroke={fullRange ? "#4b5563" : "#6366f1"} strokeWidth={fullRange ? 1 : 2}
+                strokeOpacity={dragging === "upper" ? 1 : 0.8} strokeDasharray={fullRange ? "6 4" : undefined} />
+              <circle cx={PAD_LEFT + plotW * 0.85} cy={upperY} r={7}
+                fill={fullRange ? "#374151" : "#6366f1"} stroke="#1f2937" strokeWidth={2} />
+              <circle cx={PAD_LEFT + plotW * 0.85} cy={upperY} r={3} fill="white" opacity={fullRange ? 0.3 : 0.7} />
+              <rect x={PAD_LEFT + plotW * 0.85 - 46} y={upperY + 3}
+                width={fullRange ? 60 : 90} height={16} rx={3}
+                fill={fullRange ? "#1f2937" : "#312e81"} fillOpacity={0.95} />
+              <text x={PAD_LEFT + plotW * 0.85 - 42} y={upperY + 14} fontSize={9}
+                fill={fullRange ? "#6b7280" : "#a5b4fc"} fontWeight="600">
+                {fullRange ? "Full →" : `Max: ${formatPrice(effectiveUpperPrice!)}`}
               </text>
             </g>
           )}
@@ -382,11 +392,10 @@ export function PoolRangeChart({
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
         <span className="text-gray-600">Live · ~20s</span>
         <span className="text-yellow-600 ml-1">─ SMA-7</span>
-        {onRangeChange && !fullRange && (
-          <span className="text-indigo-400 ml-1">⟷ Drag handle untuk atur range harga</span>
-        )}
-        {fullRange && (
-          <span className="text-gray-600 ml-auto">Full range</span>
+        {onRangeChange && (
+          <span className="text-indigo-400 ml-1">
+            {fullRange ? "↕ Drag handle untuk custom range" : "↕ Drag handle untuk ubah range"}
+          </span>
         )}
       </div>
     </div>

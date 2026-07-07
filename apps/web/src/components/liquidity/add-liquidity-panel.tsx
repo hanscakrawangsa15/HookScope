@@ -512,10 +512,22 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
                 </p>
               )}
               {quoteError && (
-                <div className="px-1">
+                <div className="px-1 space-y-1">
                   <p className="text-[11px] text-orange-400">{quoteError}</p>
+                  {/rate.limit/i.test(quoteError) && (
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] text-gray-500">RPC sedang ramai, tunggu sebentar.</p>
+                      <button
+                        onClick={() => { setQuoteError(null); handlePreset(rangePreset); }}
+                        className="text-[10px] px-2 py-0.5 rounded cursor-pointer"
+                        style={{ background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", color: "#a5b4fc" }}
+                      >
+                        ↻ Coba Lagi
+                      </button>
+                    </div>
+                  )}
                   {isAnvilForkMode && /HTTP request failed|Anvil/i.test(quoteError) && (
-                    <p className="text-[10px] text-yellow-600 mt-0.5">
+                    <p className="text-[10px] text-yellow-600">
                       → Jalankan <code className="font-mono bg-black/20 px-1 rounded">pnpm anvil:start</code> di terminal, lalu refresh.
                     </p>
                   )}
