@@ -115,10 +115,10 @@ export function PoolRangeChart({
     finally { setLoading(false); }
   }, [hookAddress, poolId, chainId, period]);
 
+  // Chart is static — fetch once on mount/period change, no polling.
+  // Only the price range handles remain interactive.
   useEffect(() => {
     fetchHistory();
-    const id = setInterval(() => fetchHistory(true), 10_000);
-    return () => clearInterval(id);
   }, [fetchHistory]);
 
   const livePrice = currentPrice ??
@@ -401,12 +401,12 @@ export function PoolRangeChart({
 
       {/* Footer */}
       <div className="flex items-center gap-2 mt-1.5 text-[9px]">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-gray-600">Live · ~20s</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+        <span className="text-gray-600">Chart statis · range interaktif</span>
         <span className="text-yellow-600 ml-1">─ SMA-7</span>
         {onRangeChange && (
           <span className="text-indigo-400 ml-1">
-            {fullRange ? "↕ Drag handle untuk custom range" : "↕ Drag handle untuk ubah range"}
+            {fullRange ? "↕ Drag untuk set custom range" : "↕ Drag handle untuk ubah range"}
           </span>
         )}
       </div>
