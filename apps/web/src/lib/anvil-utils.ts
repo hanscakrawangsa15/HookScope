@@ -125,25 +125,34 @@ export async function demoFundWallet(userAddress: string): Promise<void> {
 }
 
 /**
- * Fund any ERC20 token balance for a target address by directly writing to the
- * correct storage slot (computed via keccak256 of the OZ standard mapping layout).
+ * Fund any ERC20 token balance via direct storage slot override.
  *
- * Works for ALL standard OpenZeppelin ERC20 tokens (balances mapping at slot 0).
- * Does NOT require a whale, impersonation, or a working mint() function.
- * Amount is set immediately — no mining needed (storage override, not a tx).
+ * Tries slot indices 0–9 (OZ standard is slot 0, but proxy/diamond contracts
+ * may use higher slots). Verifies by reading balanceOf after each write.
+ * No whale, no impersonation, no mining — instant effect.
  */
 export async function demoFundToken(tokenAddress: string, userAddress: string, amount: bigint): Promise<void> {
   const { keccak256 } = await import("viem");
-  // ABI encoding for mapping(address => uint256) at slot 0:
-  // slot = keccak256(abi.encode(address, 0))
-  //      = keccak256(left_pad_32(address) ++ left_pad_32(0))
-  const paddedAddr = userAddress.slice(2).toLowerCase().padStart(64, "0");
-  const paddedSlot = "0".repeat(64);
-  const slot = keccak256(`0x${paddedAddr}${paddedSlot}` as `0x${string}`);
   const amountHex = amount.toString(16).padStart(64, "0");
+  const paddedAddr = userAddress.slice(2).toLowerCase().padStart(64, "0");
 
-  const res = await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${amountHex}`]);
-  if (res.error) throw new Error(`demoFundToken failed: ${res.error.message}`);
+  // balanceOf(address) = selector 0x70a08231
+  const balData = `0x70a08231${userAddress.slice(2).toLowerCase().padStart(64, "0")}`;
+
+  for (let slotIdx = 0; slotIdx <= 9; slotIdx++) {
+    const paddedSlot = slotIdx.toString(16).padStart(64, "0");
+    const slot = keccak256(`0x${paddedAddr}${paddedSlot}` as `0x${string}`);
+
+    await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${amountHex}`]);
+
+    // Verify the write worked by calling balanceOf
+    const check = await anvilRpc("eth_call", [{ to: tokenAddress, data: balData }, "latest"]);
+    if (check.result && check.result !== "0x" && BigInt(check.result as string) > 0n) return; // success
+
+    // Didn't work — reset slot and try next
+    await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${"0".repeat(64)}`]);
+  }
+  throw new Error(`demoFundToken: could not find balance storage slot for ${tokenAddress}. Token may use non-standard layout.`);
 }
 
 /**

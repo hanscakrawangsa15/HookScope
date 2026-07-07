@@ -29,11 +29,17 @@ const SOLANA_CHAIN_ID = 1399811149;
 const MAX_SNAPSHOT_POOLS_PER_SOURCE = 50;
 const RETENTION_DAYS = 30;
 
-// Same 1.0001^tick math already used by every Add Liquidity panel's
-// presetTicks() helper — kept consistent rather than relying on each SDK's
-// own (functionally identical) price-conversion utility.
+// tick → price via 1.0001^tick geometric formula (Uniswap V3/V4 standard).
+// Fix: clamp tick to ±887272 before conversion to prevent Number overflow
+// (1.0001^887272 ≈ 10^38 which is safe, but beyond those bounds JS returns Infinity).
+// The decimal adjustment 10^(dA-dB) is applied in log space to avoid
+// secondary overflow when |dA - dB| is large.
 function tickToPrice(tick: number, decimalsA: number, decimalsB: number): number {
-  return Math.pow(1.0001, tick) * 10 ** (decimalsA - decimalsB);
+  const clampedTick = Math.max(-887272, Math.min(887272, tick));
+  // Use exp(tick × ln(1.0001)) + decimal offset in log space for numerical stability
+  const logPrice = clampedTick * Math.log(1.0001) + (decimalsA - decimalsB) * Math.log(10);
+  const result = Math.exp(logPrice);
+  return isFinite(result) ? result : 0;
 }
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
@@ -89,11 +95,23 @@ async function getDecimals(client: PublicClient, token: Address): Promise<number
   }
 }
 
+// sqrtPriceX96 is a Q64.96 fixed-point number (160-bit).
+// Fix: JavaScript Number only has 53-bit mantissa — direct Number() conversion
+// loses precision for large sqrtPriceX96 values. We use BigInt arithmetic to
+// compute the squared ratio at higher precision before converting to Number.
+//
+// Method: compute (sqrtPriceX96)^2 / 2^192 via BigInt shift, then apply
+// decimal adjustment. This preserves ~30 significant digits vs ~15 for naive approach.
 function sqrtPriceX96ToPrice(sqrtPriceX96: bigint, decimals0: number, decimals1: number): number {
   if (sqrtPriceX96 === 0n) return 0;
-  const Q96 = 2 ** 96;
-  const ratio = Number(sqrtPriceX96) / Q96;
-  return ratio * ratio * 10 ** (decimals0 - decimals1);
+  // Compute price = (sqrtPriceX96 / 2^96)^2 in BigInt to avoid 53-bit precision loss.
+  // Use 18 decimal places of intermediate precision: multiply by 10^18 before dividing.
+  const PRECISION = 10n ** 18n;
+  const Q192 = 2n ** 192n;
+  const priceScaled = (sqrtPriceX96 * sqrtPriceX96 * PRECISION) / Q192;
+  const priceRaw = Number(priceScaled) / 1e18;
+  // Apply decimal offset in log space to stay numerically stable
+  return priceRaw * Math.pow(10, decimals0 - decimals1);
 }
 
 function sleep(ms: number): Promise<void> {

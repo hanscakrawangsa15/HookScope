@@ -17,12 +17,15 @@ import { TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 
 // ── tick/price helpers ─────────────────────────────────────────────────────────
+// log-space conversion to avoid overflow at extreme ticks (±887272)
 function tickToPrice(tick: number, decimalsA: number, decimalsB: number): number {
-  return Math.pow(1.0001, tick) * 10 ** (decimalsA - decimalsB);
+  const clampedTick = Math.max(-887272, Math.min(887272, tick));
+  const result = Math.exp(clampedTick * Math.log(1.0001) + (decimalsA - decimalsB) * Math.log(10));
+  return isFinite(result) ? result : 0;
 }
 function priceToTick(price: number, decimalsA: number, decimalsB: number): number {
   if (price <= 0) return 0;
-  return Math.log(price / 10 ** (decimalsA - decimalsB)) / Math.log(1.0001);
+  return (Math.log(price) - (decimalsA - decimalsB) * Math.log(10)) / Math.log(1.0001);
 }
 function nearestUsableTick(tick: number, spacing: number, min: number, max: number): number {
   const r = Math.round(tick / spacing) * spacing;
@@ -143,18 +146,28 @@ export function PoolRangeChart({
   const rawMin = hasCandles ? Math.min(...candles.map(c => c.low)) : (livePrice ?? 1) * 0.98;
   const rawMax = hasCandles ? Math.max(...candles.map(c => c.high)) : (livePrice ?? 1) * 1.02;
 
-  // memo to avoid recomputing scale on every render (also needed by useCallback below)
-  const { minPrice, maxPrice } = useMemo(() => {
-    let lo = rawMin;
-    let hi = rawMax;
+  // ── Logarithmic price scale ────────────────────────────────────────────────
+  // Crypto prices move geometrically (%, not $), so log scale is the correct
+  // representation. A 10% move looks the same whether price is $0.001 or $1M.
+  // Linear scale would compress all small-price candles into a single pixel.
+  const { logMin, logMax } = useMemo(() => {
+    const safeMin = Math.max(rawMin > 0 ? rawMin : 1e-10, 1e-18);
+    let lo = Math.log(safeMin);
+    let hi = Math.log(Math.max(rawMax, safeMin * 1.001));
     if (!fullRange && priceLo != null && priceHi != null) {
-      lo = Math.min(lo, Math.min(priceLo, priceHi));
-      hi = Math.max(hi, Math.max(priceLo, priceHi));
+      const safeRangeLo = Math.max(Math.min(priceLo, priceHi), 1e-18);
+      const safeRangeHi = Math.max(Math.max(priceLo, priceHi), safeRangeLo * 1.001);
+      lo = Math.min(lo, Math.log(safeRangeLo));
+      hi = Math.max(hi, Math.log(safeRangeHi));
     }
-    if (lo === hi) { lo *= 0.97; hi *= 1.03; }
+    if (lo === hi) { lo -= 0.03; hi += 0.03; }
     const pad = (hi - lo) * 0.10;
-    return { minPrice: lo - pad, maxPrice: hi + pad };
+    return { logMin: lo - pad, logMax: hi + pad };
   }, [rawMin, rawMax, fullRange, priceLo, priceHi]);
+
+  // Keep minPrice/maxPrice as real values for labels
+  const minPrice = Math.exp(logMin);
+  const maxPrice = Math.exp(logMax);
 
   const plotW = VIEW_W - PAD_LEFT - PAD_RIGHT;
   const plotH = VIEW_H - PAD_TOP - PAD_BOTTOM;
@@ -162,9 +175,14 @@ export function PoolRangeChart({
   const slot = plotW / n;
   const bodyWidth = Math.max(2, Math.min(slot * 0.6, 36));
 
+  // Log-scale Y mapping: equal pixel distance = equal percentage price change
   const yFor = useCallback(
-    (price: number) => PAD_TOP + (1 - (price - minPrice) / (maxPrice - minPrice)) * plotH,
-    [minPrice, maxPrice, plotH]
+    (price: number) => {
+      if (price <= 0) return PAD_TOP + plotH; // clamp to bottom
+      const logP = Math.log(price);
+      return PAD_TOP + (1 - (logP - logMin) / (logMax - logMin)) * plotH;
+    },
+    [logMin, logMax, plotH]
   );
   const xFor = (i: number) => PAD_LEFT + slot * i + slot / 2;
 
@@ -176,9 +194,10 @@ export function PoolRangeChart({
     return (clientY - rect.top) * scaleY;
   }, []);
 
+  // Inverse log scale: pixel → price
   const yToPrice = useCallback(
-    (pixelY: number) => minPrice + (1 - (pixelY - PAD_TOP) / plotH) * (maxPrice - minPrice),
-    [minPrice, maxPrice, plotH]
+    (pixelY: number) => Math.exp(logMin + (1 - (pixelY - PAD_TOP) / plotH) * (logMax - logMin)),
+    [logMin, logMax, plotH]
   );
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -201,16 +220,23 @@ export function PoolRangeChart({
   const stopDrag = useCallback(() => setDragging(null), []);
 
   // ── Derived render values (non-hook, safe after all useCallback/useMemo) ────
+
+  // Y-axis ticks: log-spaced (equal % between ticks) not linearly-spaced.
+  // Produces clean "×10", "×2" etc markers instead of cramped labels near zero.
   const Y_TICKS = 5;
   const yTickVals = Array.from({ length: Y_TICKS }, (_, i) =>
-    minPrice + ((maxPrice - minPrice) * i) / (Y_TICKS - 1)
+    Math.exp(logMin + (logMax - logMin) * i / (Y_TICKS - 1))
   );
+
   const xLabelCount = Math.min(5, n);
   const xLabelIndices = Array.from({ length: xLabelCount }, (_, i) =>
     Math.floor((i * (n - 1)) / Math.max(1, xLabelCount - 1))
   );
 
-  const SMA_P = 7;
+  // Adaptive SMA window: ~20% of data points, min 3, max 21.
+  // Short window for sparse data (few candles) prevents SMA from disappearing;
+  // longer window for dense data smooths noise effectively.
+  const SMA_P = Math.max(3, Math.min(21, Math.round(candles.length * 0.2)));
   const smaPoints: { x: number; y: number }[] = [];
   for (let i = SMA_P - 1; i < candles.length; i++) {
     const avg = candles.slice(i - SMA_P + 1, i + 1).reduce((s, c) => s + c.close, 0) / SMA_P;

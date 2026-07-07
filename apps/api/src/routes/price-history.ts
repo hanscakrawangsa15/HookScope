@@ -18,11 +18,14 @@ function normalizeAddress(address: string): string {
   return address.startsWith("0x") ? address.toLowerCase() : address;
 }
 
+// Higher-precision sqrtPriceX96 → price via BigInt intermediate arithmetic.
+// Avoids 53-bit mantissa precision loss of direct Number() conversion.
 function sqrtPriceX96ToPrice(sqrtPriceX96: bigint, decimals0: number, decimals1: number): number {
   if (sqrtPriceX96 === 0n) return 0;
-  const Q96 = 2 ** 96;
-  const ratio = Number(sqrtPriceX96) / Q96;
-  return ratio * ratio * 10 ** (decimals0 - decimals1);
+  const PRECISION = 10n ** 18n;
+  const Q192 = 2n ** 192n;
+  const priceScaled = (sqrtPriceX96 * sqrtPriceX96 * PRECISION) / Q192;
+  return (Number(priceScaled) / 1e18) * Math.pow(10, decimals0 - decimals1);
 }
 
 // The indexer's PriceSnapshotService only sweeps the top ~50 pools per chain by
@@ -213,7 +216,8 @@ priceHistoryRouter.get(
 
     if (rows.length < 5) return c.json(fallback());
 
-    // Volatility: stddev of consecutive log-returns over the window.
+    // ── Volatility via log-returns stddev ─────────────────────────────────────
+    // log-returns: r_i = ln(P_i / P_{i-1}) — symmetric, scale-invariant
     const logReturns: number[] = [];
     for (let i = 1; i < rows.length; i++) {
       const prev = rows[i - 1].price;
@@ -223,29 +227,34 @@ priceHistoryRouter.get(
     if (logReturns.length < 4) return c.json(fallback());
 
     const mean = logReturns.reduce((s, v) => s + v, 0) / logReturns.length;
-    const variance = logReturns.reduce((s, v) => s + (v - mean) ** 2, 0) / logReturns.length;
+    // Use Bessel's correction (n-1) for unbiased sample stddev
+    const variance = logReturns.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, logReturns.length - 1);
     const stddev = Math.sqrt(variance);
 
-    // Scale stddev (a per-sample log-return) into a sensible range-width
-    // percentage, clamped to a usable band — pure noise shouldn't produce a
-    // 0%-wide or 1000%-wide range.
-    const widthPct = Math.min(50, Math.max(5, stddev * 100 * 8));
+    // Annualised-equivalent scaler: each sample ≈ 20s, 1 day ≈ 4320 samples.
+    // Annualised vol = per-sample stddev × √(samples_per_year).
+    // We target LP range = 1× daily vol → divide by √365 from annualised.
+    // Simplified: daily_vol_pct ≈ stddev_per_sample × √4320 × 100
+    // Clamp to [5%, 50%] so extreme values don't produce useless ranges.
+    const dailyVolPct = stddev * Math.sqrt(4320) * 100;
+    const widthPct = Math.min(50, Math.max(5, dailyVolPct));
 
-    // Trend: simple linear regression slope of price vs. sample index.
+    // ── Trend via log-price OLS regression (more stable than price-level OLS) ─
+    // Using log prices removes heteroskedasticity (variance grows with price level).
     const n = rows.length;
-    const xs = rows.map((_, i) => i);
-    const ys = rows.map((r) => r.price);
-    const xMean = xs.reduce((s, v) => s + v, 0) / n;
-    const yMean = ys.reduce((s, v) => s + v, 0) / n;
+    const logPrices = rows.map((r) => r.price > 0 ? Math.log(r.price) : 0);
+    const xMean = (n - 1) / 2; // mean of 0..n-1 = (n-1)/2
+    const yMean = logPrices.reduce((s, v) => s + v, 0) / n;
     let num = 0, den = 0;
     for (let i = 0; i < n; i++) {
-      num += (xs[i] - xMean) * (ys[i] - yMean);
-      den += (xs[i] - xMean) ** 2;
+      num += (i - xMean) * (logPrices[i] - yMean);
+      den += (i - xMean) ** 2;
     }
     const slope = den === 0 ? 0 : num / den;
-    const avgPrice = yMean || 1;
-    // Normalize slope into a bounded bias percentage of the range width.
-    const trendBiasPct = Math.max(-50, Math.min(50, (slope / avgPrice) * n * 100));
+    // slope is log-return per sample index (already normalised by log scale)
+    // Convert to percentage of range width for bias, capped at ±30% (was ±50%)
+    const totalDrift = slope * n * 100;  // total log-drift over window in %
+    const trendBiasPct = Math.max(-30, Math.min(30, totalDrift));
 
     const halfWidthTicks = Math.round(Math.log(1 + widthPct / 100) / Math.log(1.0001));
     const biasTicks = Math.round((trendBiasPct / 100) * halfWidthTicks);
