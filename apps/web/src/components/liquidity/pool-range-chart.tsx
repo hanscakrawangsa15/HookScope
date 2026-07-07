@@ -137,25 +137,24 @@ export function PoolRangeChart({
   const inRange = livePrice != null && priceLo != null && priceHi != null &&
     !fullRange && livePrice >= Math.min(priceLo, priceHi) && livePrice <= Math.max(priceLo, priceHi);
 
-  // ── Chart scale ────────────────────────────────────────────────────────────
-  if (loading) return <div className="h-64 shimmer rounded-xl" />;
-
+  // ── Chart scale — computed unconditionally (hooks must come before any return) ─
   const hasCandles = candles.length > 0;
 
-  let minPrice = hasCandles ? Math.min(...candles.map(c => c.low)) : (livePrice ?? 0) * 0.98;
-  let maxPrice = hasCandles ? Math.max(...candles.map(c => c.high)) : (livePrice ?? 0) * 1.02;
+  const rawMin = hasCandles ? Math.min(...candles.map(c => c.low)) : (livePrice ?? 1) * 0.98;
+  const rawMax = hasCandles ? Math.max(...candles.map(c => c.high)) : (livePrice ?? 1) * 1.02;
 
-  // Widen domain to fit range handles (but not full-range)
-  if (!fullRange && priceLo != null && priceHi != null) {
-    const lo = Math.min(priceLo, priceHi);
-    const hi = Math.max(priceLo, priceHi);
-    minPrice = Math.min(minPrice, lo);
-    maxPrice = Math.max(maxPrice, hi);
-  }
-  if (minPrice === maxPrice) { minPrice *= 0.97; maxPrice *= 1.03; }
-  const pad = (maxPrice - minPrice) * 0.10;
-  minPrice -= pad;
-  maxPrice += pad;
+  // memo to avoid recomputing scale on every render (also needed by useCallback below)
+  const { minPrice, maxPrice } = useMemo(() => {
+    let lo = rawMin;
+    let hi = rawMax;
+    if (!fullRange && priceLo != null && priceHi != null) {
+      lo = Math.min(lo, Math.min(priceLo, priceHi));
+      hi = Math.max(hi, Math.max(priceLo, priceHi));
+    }
+    if (lo === hi) { lo *= 0.97; hi *= 1.03; }
+    const pad = (hi - lo) * 0.10;
+    return { minPrice: lo - pad, maxPrice: hi + pad };
+  }, [rawMin, rawMax, fullRange, priceLo, priceHi]);
 
   const plotW = VIEW_W - PAD_LEFT - PAD_RIGHT;
   const plotH = VIEW_H - PAD_TOP - PAD_BOTTOM;
@@ -163,44 +162,24 @@ export function PoolRangeChart({
   const slot = plotW / n;
   const bodyWidth = Math.max(2, Math.min(slot * 0.6, 36));
 
-  const yFor = (price: number) => PAD_TOP + (1 - (price - minPrice) / (maxPrice - minPrice)) * plotH;
-  const xFor = (i: number) => PAD_LEFT + slot * i + slot / 2;
-  // Inverse: pixel Y → price
-  const yToPrice = (pixelY: number) => minPrice + (1 - (pixelY - PAD_TOP) / plotH) * (maxPrice - minPrice);
-
-  // SMA-7
-  const SMA = 7;
-  const smaPoints: { x: number; y: number }[] = [];
-  for (let i = SMA - 1; i < candles.length; i++) {
-    const avg = candles.slice(i - SMA + 1, i + 1).reduce((s, c) => s + c.close, 0) / SMA;
-    smaPoints.push({ x: xFor(i), y: yFor(avg) });
-  }
-
-  const Y_TICKS = 5;
-  const yTickVals = Array.from({ length: Y_TICKS }, (_, i) => minPrice + ((maxPrice - minPrice) * i) / (Y_TICKS - 1));
-  const xLabelCount = Math.min(5, n);
-  const xLabelIndices = Array.from({ length: xLabelCount }, (_, i) =>
-    Math.floor((i * (n - 1)) / Math.max(1, xLabelCount - 1))
+  const yFor = useCallback(
+    (price: number) => PAD_TOP + (1 - (price - minPrice) / (maxPrice - minPrice)) * plotH,
+    [minPrice, maxPrice, plotH]
   );
+  const xFor = (i: number) => PAD_LEFT + slot * i + slot / 2;
 
-  // In full-range mode, show handles at chart visual edges so user can drag
-  // inward to switch to a custom range — mirrors Uniswap V3 behavior.
-  const effectiveLowerPrice = fullRange ? minPrice + (maxPrice - minPrice) * 0.05 : (priceLo != null ? Math.min(priceLo, priceHi ?? priceLo) : null);
-  const effectiveUpperPrice = fullRange ? maxPrice - (maxPrice - minPrice) * 0.05 : (priceHi != null ? Math.max(priceHi, priceLo ?? priceHi) : null);
-
-  const lowerY = effectiveLowerPrice != null ? yFor(effectiveLowerPrice) : null;
-  const upperY = effectiveUpperPrice != null ? yFor(effectiveUpperPrice) : null;
-  const currentY = livePrice != null ? yFor(livePrice) : null;
-
-  const showHandles = onRangeChange != null && (lowerY != null || upperY != null);
-
-  // ── Drag handlers ──────────────────────────────────────────────────────────
-  const getSvgY = (clientY: number): number => {
+  // ── Drag handlers — MUST be before any conditional return ──────────────────
+  const getSvgY = useCallback((clientY: number): number => {
     if (!svgRef.current) return 0;
     const rect = svgRef.current.getBoundingClientRect();
     const scaleY = VIEW_H / rect.height;
     return (clientY - rect.top) * scaleY;
-  };
+  }, []);
+
+  const yToPrice = useCallback(
+    (pixelY: number) => minPrice + (1 - (pixelY - PAD_TOP) / plotH) * (maxPrice - minPrice),
+    [minPrice, maxPrice, plotH]
+  );
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging || !onRangeChange) return;
@@ -220,6 +199,35 @@ export function PoolRangeChart({
   }, [dragging, onRangeChange, yToPrice, decimalsA, decimalsB, tickSpacing, minTick, maxTick, tickLower, tickUpper]);
 
   const stopDrag = useCallback(() => setDragging(null), []);
+
+  // ── Derived render values (non-hook, safe after all useCallback/useMemo) ────
+  const Y_TICKS = 5;
+  const yTickVals = Array.from({ length: Y_TICKS }, (_, i) =>
+    minPrice + ((maxPrice - minPrice) * i) / (Y_TICKS - 1)
+  );
+  const xLabelCount = Math.min(5, n);
+  const xLabelIndices = Array.from({ length: xLabelCount }, (_, i) =>
+    Math.floor((i * (n - 1)) / Math.max(1, xLabelCount - 1))
+  );
+
+  const SMA_P = 7;
+  const smaPoints: { x: number; y: number }[] = [];
+  for (let i = SMA_P - 1; i < candles.length; i++) {
+    const avg = candles.slice(i - SMA_P + 1, i + 1).reduce((s, c) => s + c.close, 0) / SMA_P;
+    smaPoints.push({ x: xFor(i), y: yFor(avg) });
+  }
+
+  const effectiveLowerPrice = fullRange
+    ? minPrice + (maxPrice - minPrice) * 0.05
+    : (priceLo != null ? Math.min(priceLo, priceHi ?? priceLo) : null);
+  const effectiveUpperPrice = fullRange
+    ? maxPrice - (maxPrice - minPrice) * 0.05
+    : (priceHi != null ? Math.max(priceHi, priceLo ?? priceHi) : null);
+
+  const lowerY = effectiveLowerPrice != null ? yFor(effectiveLowerPrice) : null;
+  const upperY = effectiveUpperPrice != null ? yFor(effectiveUpperPrice) : null;
+  const currentY = livePrice != null ? yFor(livePrice) : null;
+  const showHandles = onRangeChange != null && (lowerY != null || upperY != null);
 
   return (
     <div>
@@ -251,7 +259,10 @@ export function PoolRangeChart({
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart — shimmer while loading, full chart once ready */}
+      {loading ? (
+        <div style={{ height: VIEW_H }} className="shimmer rounded-xl" />
+      ) : (
       <div style={{ height: VIEW_H }} className="relative select-none"
         onMouseMove={handleMouseMove}
         onMouseUp={stopDrag}
@@ -386,6 +397,7 @@ export function PoolRangeChart({
           </div>
         )}
       </div>
+      )} {/* end loading conditional */}
 
       {/* Footer */}
       <div className="flex items-center gap-2 mt-1.5 text-[9px]">
