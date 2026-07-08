@@ -322,6 +322,63 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
       setDemoApproving(false);
       return;
     }
+
+    // Pre-flight LP simulation: run eth_call before sending to MetaMask.
+    // If the transaction would revert (e.g. token has no code, or pool issue),
+    // we catch it here with a clear error instead of a silent MetaMask failure.
+    try {
+      const { api: apiModule } = await import("@/lib/api");
+
+      const builtForSim = await apiModule.lp.build({
+        chainId: effectiveChainId,
+        poolKey: {
+          currency0: pool.token0, currency1: pool.token1,
+          fee: pool.fee, tickSpacing: pool.tickSpacing, hooks: hookAddress,
+        },
+        tickLower: ticks!.tickLower,
+        tickUpper: ticks!.tickUpper,
+        amount0: (amount0Raw ?? 0n).toString(),
+        amount1: (amount1Raw ?? 0n).toString(),
+        recipient: account,
+        slippageBps: Math.round(slippagePct * 100),
+      });
+
+      // Simulate via Anvil eth_call — catch any revert before MetaMask
+      const simRes = await fetch("http://127.0.0.1:8545", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "eth_call",
+          params: [{
+            from: account,
+            to: builtForSim.to,
+            data: builtForSim.data,
+            value: "0x" + BigInt(builtForSim.value).toString(16),
+          }, "latest"],
+          id: 1,
+        }),
+      }).then(r => r.json()) as { result?: string; error?: { message: string; data?: string } };
+
+      if (simRes.error) {
+        const errMsg = simRes.error.message ?? "Transaction will revert";
+        const isTransferFail = /TRANSFER_FROM_FAILED|transfer/i.test(errMsg);
+        throw new Error(
+          isTransferFail
+            ? `Token tidak bisa di-transfer (mungkin belum ada di fork ini). ` +
+              `Coba pakai Test Pool: /hooks/0x0000...0000?chainId=31337`
+            : `Simulasi LP gagal: ${errMsg.slice(0, 120)}`
+        );
+      }
+    } catch (simErr) {
+      if (simErr instanceof TypeError) {
+        // fetch failed = Anvil not running, skip simulation and let MetaMask handle
+      } else {
+        setTxError(simErr instanceof Error ? simErr.message : "Simulasi gagal");
+        setDemoApproving(false);
+        return;
+      }
+    }
+
     setDemoApproving(false);
     await handleMint();
   }, [pool, account, amount0Raw, needsApproval0, needsApproval1, isNative0, isNative1,

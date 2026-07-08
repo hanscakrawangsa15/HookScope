@@ -137,6 +137,18 @@ async function checkERC20Balance(tokenAddress: string, userAddress: string): Pro
 }
 
 export async function demoFundToken(tokenAddress: string, userAddress: string, amount: bigint): Promise<void> {
+  // Check if the token address actually has contract code.
+  // No bytecode = EOA or destroyed contract = can never have balanceOf/transfer.
+  const codeCheck = await anvilRpc("eth_getCode", [tokenAddress, "latest"]);
+  const code = typeof codeCheck.result === "string" ? codeCheck.result : "0x";
+  if (!code || code === "0x" || code.length <= 2) {
+    throw new Error(
+      `Token ${tokenAddress.slice(0, 12)}… tidak punya bytecode di Anvil fork ini. ` +
+      `Kemungkinan belum di-deploy saat fork dilakukan. ` +
+      `Gunakan Test Pool /hooks/0x0000...0000?chainId=31337 sebagai gantinya.`
+    );
+  }
+
   const { keccak256 } = await import("viem");
   const amountHex = amount.toString(16).padStart(64, "0");
   const paddedAddr = userAddress.slice(2).toLowerCase().padStart(64, "0");
