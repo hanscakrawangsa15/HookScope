@@ -231,18 +231,26 @@ priceHistoryRouter.get(
     const variance = logReturns.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, logReturns.length - 1);
     const stddev = Math.sqrt(variance);
 
-    // Annualised-equivalent scaler: each sample ≈ 20s, 1 day ≈ 4320 samples.
-    // Annualised vol = per-sample stddev × √(samples_per_year).
-    // We target LP range = 1× daily vol → divide by √365 from annualised.
-    // Simplified: daily_vol_pct ≈ stddev_per_sample × √4320 × 100
-    // Clamp to [5%, 50%] so extreme values don't produce useless ranges.
-    const dailyVolPct = stddev * Math.sqrt(4320) * 100;
+    // B8-fix: Estimate actual sample interval from timestamps instead of assuming 20s.
+    // Real interval varies: indexer sweeps every 2 min, staleness guard is 20s for active
+    // pools. Using actual timestamps gives a correct annualisation multiplier.
+    const intervalSec = rows.length >= 2
+      ? (new Date(rows[rows.length - 1].timestamp).getTime() - new Date(rows[0].timestamp).getTime())
+        / Math.max(1, rows.length - 1) / 1000
+      : 120; // fallback: 2 min if only one sample
+    const samplesPerDay = 86400 / Math.max(intervalSec, 1);
+    const dailyVolPct = stddev * Math.sqrt(samplesPerDay) * 100;
     const widthPct = Math.min(50, Math.max(5, dailyVolPct));
 
     // ── Trend via log-price OLS regression (more stable than price-level OLS) ─
-    // Using log prices removes heteroskedasticity (variance grows with price level).
-    const n = rows.length;
-    const logPrices = rows.map((r) => r.price > 0 ? Math.log(r.price) : 0);
+    // B4-fix: Filter out price<=0 rows before OLS (stored as 0 from sqrtPriceX96 underflow).
+    // Including them corrupts the slope — price=0 is treated as log(1)=0, creating
+    // a phantom downward trend toward 0 from actual pool prices.
+    const validRows = rows.filter(r => r.price > 0);
+    const n = validRows.length;
+    if (n < 4) return c.json(fallback()); // not enough valid data after filtering
+
+    const logPrices = validRows.map((r) => Math.log(r.price));
     const xMean = (n - 1) / 2; // mean of 0..n-1 = (n-1)/2
     const yMean = logPrices.reduce((s, v) => s + v, 0) / n;
     let num = 0, den = 0;
@@ -251,16 +259,28 @@ priceHistoryRouter.get(
       den += (i - xMean) ** 2;
     }
     const slope = den === 0 ? 0 : num / den;
-    // slope is log-return per sample index (already normalised by log scale)
-    // Convert to percentage of range width for bias, capped at ±30% (was ±50%)
-    const totalDrift = slope * n * 100;  // total log-drift over window in %
+    // totalDrift = log-return per sample × n samples = total log-return over window
+    const totalDrift = slope * n * 100;
     const trendBiasPct = Math.max(-30, Math.min(30, totalDrift));
 
     const halfWidthTicks = Math.round(Math.log(1 + widthPct / 100) / Math.log(1.0001));
     const biasTicks = Math.round((trendBiasPct / 100) * halfWidthTicks);
 
-    const tickLower = nearestUsableTick(currentTick - halfWidthTicks + biasTicks, tickSpacing, minTick, maxTick);
-    const tickUpper = nearestUsableTick(currentTick + halfWidthTicks + biasTicks, tickSpacing, minTick, maxTick);
+    // B1-fix: Guard against tickLower >= tickUpper after nearestUsableTick clamping.
+    // Both endpoints can snap to the same boundary when bias pushes range fully past
+    // minTick/maxTick (e.g. near-maxTick pool with +30% upward bias).
+    let tickLower = nearestUsableTick(currentTick - halfWidthTicks + biasTicks, tickSpacing, minTick, maxTick);
+    let tickUpper = nearestUsableTick(currentTick + halfWidthTicks + biasTicks, tickSpacing, minTick, maxTick);
+    if (tickLower >= tickUpper) {
+      // Bias pushed both to same boundary — fall back to symmetric unbiased range
+      tickLower = nearestUsableTick(currentTick - halfWidthTicks, tickSpacing, minTick, maxTick);
+      tickUpper = nearestUsableTick(currentTick + halfWidthTicks, tickSpacing, minTick, maxTick);
+    }
+    // Final safety: if still equal (e.g. halfWidthTicks = 0), ensure minimum gap
+    if (tickLower >= tickUpper) {
+      tickLower = nearestUsableTick(currentTick - tickSpacing, tickSpacing, minTick, maxTick);
+      tickUpper = nearestUsableTick(currentTick + tickSpacing, tickSpacing, minTick, maxTick);
+    }
 
     return c.json({
       tickLower,

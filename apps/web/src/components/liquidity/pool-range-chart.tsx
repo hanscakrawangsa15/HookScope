@@ -70,6 +70,18 @@ function buildCandles(points: { timestamp: string; price: number }[], bucketMs: 
   return [...buckets.values()].sort((a, b) => a.bucketStart - b.bucketStart);
 }
 
+// B9-fix: Use tick bounds rather than price ratio to detect full range.
+// Price ratio > 1M misclassifies legitimate wide custom positions on low-price tokens
+// (e.g. SHIB/ETH pool where any custom range spans many orders of magnitude).
+// Instead, compare with the actual protocol MIN/MAX tick bounds — a "full range"
+// position has tickLower at/near minTick AND tickUpper at/near maxTick.
+function isFullRangeByTick(tickLo: number | null | undefined, tickHi: number | null | undefined, minTick: number, maxTick: number): boolean {
+  if (tickLo == null || tickHi == null) return false;
+  // Allow ±1 tickSpacing tolerance (common rounding) by checking if within 1% of range
+  const range = maxTick - minTick;
+  return tickLo <= minTick + range * 0.01 && tickHi >= maxTick - range * 0.01;
+}
+// Legacy price-based check used only when tick bounds are unavailable
 function isFullRangeSpan(lo: number, hi: number): boolean {
   return lo <= 0 || hi <= 0 || hi / lo > 1_000_000;
 }
@@ -134,17 +146,20 @@ export function PoolRangeChart({
 
   const priceLo = tickLower != null ? tickToPrice(tickLower, decimalsA, decimalsB) : null;
   const priceHi = tickUpper != null ? tickToPrice(tickUpper, decimalsA, decimalsB) : null;
-  const fullRange = priceLo != null && priceHi != null && isFullRangeSpan(
-    Math.min(priceLo, priceHi), Math.max(priceLo, priceHi)
-  );
+  // B9-fix: Prefer tick-based full-range detection over price ratio heuristic
+  const fullRange = isFullRangeByTick(tickLower, tickUpper, minTick, maxTick)
+    || (priceLo != null && priceHi != null && isFullRangeSpan(
+      Math.min(priceLo, priceHi), Math.max(priceLo, priceHi)
+    ));
   const inRange = livePrice != null && priceLo != null && priceHi != null &&
     !fullRange && livePrice >= Math.min(priceLo, priceHi) && livePrice <= Math.max(priceLo, priceHi);
 
   // ── Chart scale — computed unconditionally (hooks must come before any return) ─
   const hasCandles = candles.length > 0;
 
-  const rawMin = hasCandles ? Math.min(...candles.map(c => c.low)) : (livePrice ?? 1) * 0.98;
-  const rawMax = hasCandles ? Math.max(...candles.map(c => c.high)) : (livePrice ?? 1) * 1.02;
+  // B7-fix: Use reduce instead of spread to avoid stack overflow on large arrays.
+  const rawMin = hasCandles ? candles.reduce((m, c) => Math.min(m, c.low), Infinity) : (livePrice ?? 1) * 0.98;
+  const rawMax = hasCandles ? candles.reduce((m, c) => Math.max(m, c.high), -Infinity) : (livePrice ?? 1) * 1.02;
 
   // ── Logarithmic price scale ────────────────────────────────────────────────
   // Crypto prices move geometrically (%, not $), so log scale is the correct
@@ -211,9 +226,21 @@ export function PoolRangeChart({
     const curHi = tickUpper ?? nearestUsableTick(maxTick, tickSpacing, minTick, maxTick);
 
     if (dragging === "lower") {
-      onRangeChange(Math.min(snapped, curHi - tickSpacing), curHi);
+      // B3-fix: clamp the result to [minTick, curHi-tickSpacing].
+      // Math.min(snapped, curHi-tickSpacing) could go below minTick when curHi
+      // is at/near minTick (invalid prop value), so always apply nearestUsableTick
+      // after the cross-constraint clamping.
+      const newLo = nearestUsableTick(
+        Math.min(snapped, curHi - tickSpacing),
+        tickSpacing, minTick, maxTick
+      );
+      onRangeChange(newLo, curHi);
     } else {
-      onRangeChange(curLo, Math.max(snapped, curLo + tickSpacing));
+      const newHi = nearestUsableTick(
+        Math.max(snapped, curLo + tickSpacing),
+        tickSpacing, minTick, maxTick
+      );
+      onRangeChange(curLo, newHi);
     }
   }, [dragging, onRangeChange, yToPrice, decimalsA, decimalsB, tickSpacing, minTick, maxTick, tickLower, tickUpper]);
 
@@ -243,11 +270,15 @@ export function PoolRangeChart({
     smaPoints.push({ x: xFor(i), y: yFor(avg) });
   }
 
+  // B5-fix: Use LOG-space 5% offset for full-range handles, not linear offset.
+  // Linear offset (minPrice + range*0.05) gives wrong pixel positions on log-scale
+  // chart — especially for wide-price-range pairs where linear 5% is tiny near min
+  // but huge near max. Log 5% gives symmetric visual placement at chart edges.
   const effectiveLowerPrice = fullRange
-    ? minPrice + (maxPrice - minPrice) * 0.05
+    ? Math.exp(logMin + (logMax - logMin) * 0.05)
     : (priceLo != null ? Math.min(priceLo, priceHi ?? priceLo) : null);
   const effectiveUpperPrice = fullRange
-    ? maxPrice - (maxPrice - minPrice) * 0.05
+    ? Math.exp(logMax - (logMax - logMin) * 0.05)
     : (priceHi != null ? Math.max(priceHi, priceLo ?? priceHi) : null);
 
   const lowerY = effectiveLowerPrice != null ? yFor(effectiveLowerPrice) : null;

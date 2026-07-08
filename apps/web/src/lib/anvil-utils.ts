@@ -145,9 +145,17 @@ export async function demoFundToken(tokenAddress: string, userAddress: string, a
 
     await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${amountHex}`]);
 
-    // Verify the write worked by calling balanceOf
+    // B2-fix: Safely verify by checking result type before BigInt conversion.
+    // check.result can be undefined (eth_call revert at JSON-RPC level) or "0x"
+    // (empty returndata). BigInt(undefined) throws TypeError; BigInt("0x") throws
+    // SyntaxError. Guard against both before attempting conversion.
     const check = await anvilRpc("eth_call", [{ to: tokenAddress, data: balData }, "latest"]);
-    if (check.result && check.result !== "0x" && BigInt(check.result as string) > 0n) return; // success
+    const result = typeof check.result === "string" ? check.result : null;
+    if (result && result !== "0x" && result !== "0x0" && result.length > 2) {
+      try {
+        if (BigInt(result as string) > 0n) return; // success
+      } catch { /* malformed returndata — not a standard ERC20, try next slot */ }
+    }
 
     // Didn't work — reset slot and try next
     await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${"0".repeat(64)}`]);

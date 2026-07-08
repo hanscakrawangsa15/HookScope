@@ -102,16 +102,24 @@ async function getDecimals(client: PublicClient, token: Address): Promise<number
 //
 // Method: compute (sqrtPriceX96)^2 / 2^192 via BigInt shift, then apply
 // decimal adjustment. This preserves ~30 significant digits vs ~15 for naive approach.
+// B6-fix: Detect underflow to priceScaled=0 (happens when sqrtPriceX96 is very
+// small and sqrtP^2 × 10^18 < 2^192 after integer division). Fall back to
+// floating-point path in that case — less precise but gives a nonzero result,
+// which is better than silently recording price=0 for a valid pool.
 function sqrtPriceX96ToPrice(sqrtPriceX96: bigint, decimals0: number, decimals1: number): number {
   if (sqrtPriceX96 === 0n) return 0;
-  // Compute price = (sqrtPriceX96 / 2^96)^2 in BigInt to avoid 53-bit precision loss.
-  // Use 18 decimal places of intermediate precision: multiply by 10^18 before dividing.
   const PRECISION = 10n ** 18n;
   const Q192 = 2n ** 192n;
   const priceScaled = (sqrtPriceX96 * sqrtPriceX96 * PRECISION) / Q192;
-  const priceRaw = Number(priceScaled) / 1e18;
-  // Apply decimal offset in log space to stay numerically stable
-  return priceRaw * Math.pow(10, decimals0 - decimals1);
+
+  if (priceScaled === 0n) {
+    // Underflow: sqrtP too small for BigInt path — use float with reduced precision
+    const Q96 = 2 ** 96;
+    const ratio = Number(sqrtPriceX96) / Q96;
+    return ratio * ratio * Math.pow(10, decimals0 - decimals1);
+  }
+
+  return (Number(priceScaled) / 1e18) * Math.pow(10, decimals0 - decimals1);
 }
 
 function sleep(ms: number): Promise<void> {
