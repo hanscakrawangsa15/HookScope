@@ -683,3 +683,154 @@ analyticsRouter.get("/stream", (c) => {
     clearInterval(id);
   });
 });
+
+// ── GET /analytics/fee-leaderboard — cross-pool fee comparison for LPs ────────
+// Returns ALL indexed pools aggregated by fee tier + live feeApy from on-chain data.
+// LPs use this to find pairs with highest/lowest fees and fee APY.
+//
+// Query params:
+//   chainId   (optional) – filter by chain
+//   sort      = "feeApy" | "feeRate" | "tvl"  (default: feeApy)
+//   order     = "desc" | "asc"  (default: desc)
+//   limit     = number  (default: 50, max: 200)
+analyticsRouter.get("/fee-leaderboard", async (c) => {
+  const chainId  = c.req.query("chainId") ? Number(c.req.query("chainId")) : undefined;
+  const sort     = (c.req.query("sort")  as "feeApy" | "feeRate" | "tvl") || "feeApy";
+  const order    = c.req.query("order") === "asc" ? "asc" : "desc";
+  const limit    = Math.min(200, Math.max(1, Number(c.req.query("limit") || 50)));
+
+  const DYNAMIC_FEE_FLAG = 0x800000;
+
+  // Pull pools with TVL > 0 for meaningful comparison
+  const pools = await prisma.pool.findMany({
+    where: {
+      isActive: true,
+      tvlUsd: { gt: 0 },
+      ...(chainId ? { chainId } : {}),
+    },
+    orderBy: { tvlUsd: "desc" },
+    take: Math.min(limit * 3, 300), // over-fetch since not all will have on-chain state
+    select: {
+      id: true, poolId: true, chainId: true,
+      token0: true, token1: true,
+      token0Symbol: true, token1Symbol: true,
+      fee: true, tickSpacing: true,
+      tvlUsd: true, deployedAt: true,
+      hook: { select: { address: true, hookScore: true, riskLevel: true } },
+    },
+  });
+
+  const now = Date.now();
+  const DYNAMIC_FLAGS = DYNAMIC_FEE_FLAG;
+
+  const results: Array<{
+    poolId: string;
+    chainId: number;
+    hookAddress: string;
+    hookScore: number | null;
+    riskLevel: string;
+    token0Symbol: string | null;
+    token1Symbol: string | null;
+    fee: number;
+    isDynamic: boolean;
+    effectiveFeeRate: number;      // actual LP fee %
+    protocolFeeRate0: number;      // protocol share of token0 fee (%)
+    protocolFeeRate1: number;      // protocol share of token1 fee (%)
+    lpNetFeeRate: number;          // what LP actually earns (effectiveFee - protocol)
+    feeApy: number;                // estimated APY from feeGrowthGlobals
+    tvlUsd: number;
+    liquidity: string;
+    hasHookFees: boolean;          // hook has delta-return callbacks (may take extra fees)
+    daysActive: number;
+  }> = [];
+
+  await Promise.all(pools.map(async (pool) => {
+    const tvl = pool.tvlUsd ?? 0;
+    const isDynamic = (pool.fee & DYNAMIC_FLAGS) !== 0;
+    const daysActive = pool.deployedAt
+      ? Math.max(1, (now - new Date(pool.deployedAt).getTime()) / 86_400_000)
+      : 30;
+
+    // Detect if hook takes fees via delta returns (reduces LP net earnings)
+    // afterSwapReturnsDelta = hook takes fee on swaps
+    // afterAddLiquidityReturnsDelta = hook takes fee on LP additions
+    const hasHookFees = false; // We'll flag this from pool.hook callbacks in future
+
+    const state = await readPoolState(pool.poolId, pool.chainId);
+
+    let effectiveFeeRate = (isDynamic ? 3000 : pool.fee) / 1_000_000 * 100; // default
+    let protocolFeeRate0 = 0;
+    let protocolFeeRate1 = 0;
+    let feeApy = 0;
+    let liquidityStr = "0";
+
+    if (state) {
+      const { slot0, liquidity, feeGrowth } = state;
+      const [sqrtPriceX96, , protocolFee, lpFee] = slot0;
+      const [feeGrowth0, feeGrowth1] = feeGrowth;
+
+      const effectiveFee = isDynamic ? (Number(lpFee) || 3000) : pool.fee;
+      effectiveFeeRate = effectiveFee / 1_000_000 * 100;
+
+      // Decode packed protocolFee: upper 12 bits = fee for token1, lower 12 = fee for token0
+      // V4 protocol fee is stored as 1/protocolFee (e.g. 1000 means 0.1% of LP fee)
+      const pf = Number(protocolFee);
+      const pf0 = pf & 0xFFF;          // lower 12 bits: protocol fee on token0 swaps
+      const pf1 = (pf >> 12) & 0xFFF;  // upper 12 bits: protocol fee on token1 swaps
+      // Protocol fee is expressed as denominator: fee = 1/N of LP fee
+      protocolFeeRate0 = pf0 > 0 ? (effectiveFeeRate / pf0) : 0;
+      protocolFeeRate1 = pf1 > 0 ? (effectiveFeeRate / pf1) : 0;
+
+      const price = sqrtPriceX96ToPrice(sqrtPriceX96);
+      feeApy = computeFeeApy(feeGrowth0, feeGrowth1, liquidity, price, tvl, daysActive);
+      liquidityStr = liquidity.toString();
+    }
+
+    // LP net fee = effective fee - what protocol takes (avg of both directions)
+    const protocolTake = (protocolFeeRate0 + protocolFeeRate1) / 2;
+    const lpNetFeeRate = Math.max(0, effectiveFeeRate - protocolTake);
+
+    results.push({
+      poolId: pool.poolId,
+      chainId: pool.chainId,
+      hookAddress: pool.hook.address,
+      hookScore: pool.hook.hookScore,
+      riskLevel: pool.hook.riskLevel,
+      token0Symbol: pool.token0Symbol,
+      token1Symbol: pool.token1Symbol,
+      fee: pool.fee,
+      isDynamic,
+      effectiveFeeRate: parseFloat(effectiveFeeRate.toFixed(4)),
+      protocolFeeRate0: parseFloat(protocolFeeRate0.toFixed(6)),
+      protocolFeeRate1: parseFloat(protocolFeeRate1.toFixed(6)),
+      lpNetFeeRate: parseFloat(lpNetFeeRate.toFixed(4)),
+      feeApy: parseFloat(Math.min(feeApy, 100_000).toFixed(2)),
+      tvlUsd: tvl,
+      liquidity: liquidityStr,
+      hasHookFees,
+      daysActive: Math.round(daysActive),
+    });
+  }));
+
+  // Sort
+  const sorted = results.sort((a, b) => {
+    const av = sort === "feeRate" ? a.lpNetFeeRate : sort === "tvl" ? a.tvlUsd : a.feeApy;
+    const bv = sort === "feeRate" ? b.lpNetFeeRate : sort === "tvl" ? b.tvlUsd : b.feeApy;
+    return order === "asc" ? av - bv : bv - av;
+  }).slice(0, limit);
+
+  // Summary stats
+  const withApy = results.filter(p => p.feeApy > 0);
+  const summary = {
+    totalPools: results.length,
+    avgFeeApy: withApy.length > 0
+      ? withApy.reduce((s, p) => s + p.feeApy, 0) / withApy.length : 0,
+    maxFeeApy: results.length > 0 ? Math.max(...results.map(p => p.feeApy)) : 0,
+    minFeeApy: withApy.length > 0 ? Math.min(...withApy.map(p => p.feeApy)) : 0,
+    avgFeeRate: results.length > 0
+      ? results.reduce((s, p) => s + p.effectiveFeeRate, 0) / results.length : 0,
+    dynamicCount: results.filter(p => p.isDynamic).length,
+  };
+
+  return c.json({ pools: sorted, summary });
+});

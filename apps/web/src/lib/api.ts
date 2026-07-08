@@ -486,4 +486,27 @@ export const api = {
   stats: {
     global: () => apiFetch<GlobalStats>("/api/stats"),
   },
+  feeLeaderboard: (params: { chainId?: number; sort?: "feeApy" | "feeRate" | "tvl"; order?: "desc" | "asc"; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.chainId) qs.set("chainId", String(params.chainId));
+    if (params.sort)    qs.set("sort",    params.sort);
+    if (params.order)   qs.set("order",   params.order);
+    if (params.limit)   qs.set("limit",   String(params.limit));
+    return apiFetch<{
+      pools: Array<{
+        poolId: string; chainId: number;
+        hookAddress: string; hookScore: number | null; riskLevel: string;
+        token0Symbol: string | null; token1Symbol: string | null;
+        fee: number; isDynamic: boolean;
+        effectiveFeeRate: number; lpNetFeeRate: number;
+        protocolFeeRate0: number; protocolFeeRate1: number;
+        feeApy: number; tvlUsd: number; liquidity: string;
+        hasHookFees: boolean; daysActive: number;
+      }>;
+      summary: {
+        totalPools: number; avgFeeApy: number; maxFeeApy: number;
+        minFeeApy: number; avgFeeRate: number; dynamicCount: number;
+      };
+    }>(`/api/analytics/fee-leaderboard?${qs}`, { cache: "no-store" });
+  },
 };

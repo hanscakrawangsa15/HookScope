@@ -1,6 +1,12 @@
+import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
 import { chainName, chainIcon } from "@/lib/utils";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, TrendingUp } from "lucide-react";
+
+const FeeLeaderboard = dynamic(
+  () => import("@/components/analytics/fee-leaderboard").then(m => ({ default: m.FeeLeaderboard })),
+  { ssr: false, loading: () => <div className="h-64 shimmer rounded-2xl" /> }
+);
 
 export const metadata = { title: "Platform Stats" };
 
@@ -93,6 +99,21 @@ export default async function StatsPage() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* ── Fee Leaderboard ──────────────────────────────────────────────────── */}
+      <div className="mt-12">
+        <div className="flex items-center gap-3 mb-6">
+          <TrendingUp size={22} className="text-emerald-400" />
+          <div>
+            <h2 className="text-2xl font-bold text-white">Fee Leaderboard</h2>
+            <p className="text-gray-400 text-sm mt-0.5">
+              Bandingkan fee LP, fee protokol, dan estimasi APY di semua pool Uniswap V4.
+              Bantu LP memilih pair dengan fee tertinggi atau terendah.
+            </p>
+          </div>
+        </div>
+        <FeeLeaderboard />
       </div>
     </div>
   );
