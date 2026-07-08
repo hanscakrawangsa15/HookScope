@@ -227,6 +227,21 @@
   color: #fff;
 }
 
+/* ── Select / Option dark theme ───────────────────────────────────────────── */
+/* Native <select> dropdowns inherit system color scheme; force dark explicitly. */
+select {
+  color-scheme: dark;
+}
+select option {
+  background-color: #0d1117;
+  color: #d1d5db;
+}
+select option:checked,
+select option:hover {
+  background-color: rgba(59,130,246,0.25);
+  color: #93c5fd;
+}
+
 /* ── Misc ─────────────────────────────────────────────────────────────────── */
 .mono { font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace; }
 

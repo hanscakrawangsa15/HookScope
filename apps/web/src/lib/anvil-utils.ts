@@ -125,42 +125,72 @@ export async function demoFundWallet(userAddress: string): Promise<void> {
 }
 
 /**
- * Fund any ERC20 token balance via direct storage slot override.
- *
- * Tries slot indices 0–9 (OZ standard is slot 0, but proxy/diamond contracts
- * may use higher slots). Verifies by reading balanceOf after each write.
- * No whale, no impersonation, no mining — instant effect.
+ * Fund any ERC20 token balance via storage slot override (Strategy 1) or
+ * whale impersonation (Strategy 2 fallback for non-standard storage layouts).
  */
+async function checkERC20Balance(tokenAddress: string, userAddress: string): Promise<bigint> {
+  const balData = `0x70a08231${userAddress.slice(2).toLowerCase().padStart(64, "0")}`;
+  const check = await anvilRpc("eth_call", [{ to: tokenAddress, data: balData }, "latest"]);
+  const result = typeof check.result === "string" ? check.result : null;
+  if (!result || result === "0x" || result === "0x0" || result.length <= 2) return 0n;
+  try { return BigInt(result); } catch { return 0n; }
+}
+
 export async function demoFundToken(tokenAddress: string, userAddress: string, amount: bigint): Promise<void> {
   const { keccak256 } = await import("viem");
   const amountHex = amount.toString(16).padStart(64, "0");
   const paddedAddr = userAddress.slice(2).toLowerCase().padStart(64, "0");
 
-  // balanceOf(address) = selector 0x70a08231
-  const balData = `0x70a08231${userAddress.slice(2).toLowerCase().padStart(64, "0")}`;
-
-  for (let slotIdx = 0; slotIdx <= 9; slotIdx++) {
-    const paddedSlot = slotIdx.toString(16).padStart(64, "0");
-    const slot = keccak256(`0x${paddedAddr}${paddedSlot}` as `0x${string}`);
-
+  // Strategy 1: scan keccak256(addr, slotIdx) for slots 0–19 (covers OZ + common proxy layouts)
+  for (let slotIdx = 0; slotIdx <= 19; slotIdx++) {
+    const slot = keccak256(`0x${paddedAddr}${slotIdx.toString(16).padStart(64, "0")}` as `0x${string}`);
     await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${amountHex}`]);
 
-    // B2-fix: Safely verify by checking result type before BigInt conversion.
-    // check.result can be undefined (eth_call revert at JSON-RPC level) or "0x"
-    // (empty returndata). BigInt(undefined) throws TypeError; BigInt("0x") throws
-    // SyntaxError. Guard against both before attempting conversion.
-    const check = await anvilRpc("eth_call", [{ to: tokenAddress, data: balData }, "latest"]);
-    const result = typeof check.result === "string" ? check.result : null;
-    if (result && result !== "0x" && result !== "0x0" && result.length > 2) {
-      try {
-        if (BigInt(result as string) > 0n) return; // success
-      } catch { /* malformed returndata — not a standard ERC20, try next slot */ }
-    }
+    const bal = await checkERC20Balance(tokenAddress, userAddress);
+    if (bal > 0n) return; // balanceOf confirmed the write
 
-    // Didn't work — reset slot and try next
     await anvilRpc("anvil_setStorageAt", [tokenAddress, slot, `0x${"0".repeat(64)}`]);
   }
-  throw new Error(`demoFundToken: could not find balance storage slot for ${tokenAddress}. Token may use non-standard layout.`);
+
+  // Strategy 2: Find a real mainnet holder via Transfer logs and impersonate them.
+  // On Anvil fork every mainnet address has its real balance — no slot guessing needed.
+  const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+  const logsRes = await anvilRpc("eth_getLogs", [{
+    address: tokenAddress, topics: [TRANSFER_TOPIC],
+    fromBlock: "0x1500000", toBlock: "latest",
+  }]);
+
+  if (logsRes.result && Array.isArray(logsRes.result)) {
+    const holders = new Set<string>();
+    for (const log of logsRes.result as Array<{ topics?: string[] }>) {
+      if (log.topics?.[2]) holders.add("0x" + log.topics[2].slice(-40));
+    }
+
+    for (const holder of [...holders].slice(0, 15)) {
+      if (holder.toLowerCase() === userAddress.toLowerCase()) continue;
+      const holderBal = await checkERC20Balance(tokenAddress, holder);
+      if (holderBal < amount) continue;
+
+      // Give holder gas, impersonate, transfer tokens
+      await anvilRpc("anvil_setBalance", [holder, "0x" + (10n ** 18n).toString(16).padStart(16, "0")]);
+      await anvilRpc("anvil_impersonateAccount", [holder]);
+      const transferData = "0xa9059cbb"
+        + userAddress.slice(2).toLowerCase().padStart(64, "0")
+        + amount.toString(16).padStart(64, "0");
+      await anvilRpc("eth_sendTransaction", [{ from: holder, to: tokenAddress, data: transferData, gas: "0x50000" }]);
+      await anvilRpc("evm_mine", []);
+      await anvilRpc("anvil_stopImpersonatingAccount", [holder]);
+
+      const newBal = await checkERC20Balance(tokenAddress, userAddress);
+      if (newBal >= amount) return; // transfer succeeded
+    }
+  }
+
+  throw new Error(
+    `Token ${tokenAddress.slice(0, 12)}… tidak bisa di-fund otomatis ` +
+    `(storage non-standar & tidak ada holder ditemukan di fork). ` +
+    `Gunakan Test Pool /hooks/0x0000...0000?chainId=31337 (TTKA/TTKB).`
+  );
 }
 
 /**

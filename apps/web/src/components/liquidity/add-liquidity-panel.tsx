@@ -50,6 +50,11 @@ interface AddLiquidityPanelProps {
   hookScore: number | null;
 }
 
+function feeLabel(fee: number): string {
+  if (fee === 0 || (fee & 0x800000) !== 0) return "dynamic";
+  return `${(fee / 10_000).toFixed(3)}%`;
+}
+
 export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }: AddLiquidityPanelProps) {
   const [pools, setPools] = useState<SwapPool[] | null>(null);
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
