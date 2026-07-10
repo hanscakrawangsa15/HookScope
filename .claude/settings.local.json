@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p /home/hans/Xenorize/HookScope/apps/api/src/routes && echo \"done\")",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(curl -s \"http://localhost:3001/api/raydium-amm-lp/quote?poolId=AgFnRLUScRD2E4nWQxW73hdbSN7eKEUb2jHX7tx9YTYc&amountA=0\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"http://localhost:3001/api/raydium-cpmm-lp/quote?poolId=Q2sPHPdUWFMg7M7wwrQKLrn619cAucfRsmhVJffodSp&amountA=0\")"
     ],
     "additionalDirectories": [
       "/home/hans/Xenorize/HookScope/apps/api/src"
