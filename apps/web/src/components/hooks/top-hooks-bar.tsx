@@ -28,7 +28,7 @@ export function TopHooksBar({ topByTvl, topByActivity }: TopHooksBarProps) {
       {topByActivity.length > 0 && (
         <HookRow
           icon={<Flame size={13} className="text-orange-400" />}
-          title="Most Active — Swap Terbanyak"
+          title="Most Active — Highest Swap Count"
           label="Swaps"
           hooks={topByActivity}
           metric={(h) => `${h.swapCount.toLocaleString()} swap${h.swapCount !== 1 ? "s" : ""}`}
@@ -63,7 +63,7 @@ function HookRow({ icon, title, hooks, metric, metricColor, sortHref }: HookRowP
           href={sortHref}
           className="text-[10px] text-gray-600 hover:text-gray-300 flex items-center gap-0.5 transition-colors"
         >
-          Lihat semua <ChevronRight size={10} />
+          View all <ChevronRight size={10} />
         </a>
       </div>
 

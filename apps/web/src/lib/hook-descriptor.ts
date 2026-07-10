@@ -33,37 +33,37 @@ interface HookMeta {
 // ── Per-callback benefit/risk text ─────────────────────────────────────────
 
 const CB_PROS: Record<string, string> = {
-  beforeInitialize:              "Dapat mengkustomisasi parameter pool saat inisialisasi (fee awal, tick spacing, dll.)",
-  afterInitialize:               "Memungkinkan oracle atau state tambahan diinisialisasi tepat setelah pool dibuat",
-  beforeAddLiquidity:            "Dapat memvalidasi dan membatasi posisi LP (misal: whitelist atau range khusus)",
-  afterAddLiquidity:             "Mengaktifkan strategi yield otomatis atau hedging saat LP menambahkan likuiditas",
-  beforeRemoveLiquidity:         "Melindungi LP dari eksploitasi — dapat memblokir penarikan mendadak oleh aktor jahat",
-  afterRemoveLiquidity:          "Mendistribusikan reward otomatis saat LP keluar dari posisi",
-  beforeSwap:                    "Mengizinkan dynamic fee, MEV protection, dan validasi harga sebelum swap terjadi",
-  afterSwap:                     "Memungkinkan on-chain analytics, rebalancing otomatis, dan fee redistribution",
-  beforeDonate:                  "Dapat mengontrol siapa yang boleh mengirim donation ke pool",
-  afterDonate:                   "Mendistribusikan donasi secara otomatis ke LP atau protokol",
-  beforeSwapReturnsDelta:        "Implementasi custom AMM curve — kontrol penuh atas harga dan jumlah token swap",
-  afterSwapReturnsDelta:         "Dapat mengalihkan sebagian output swap untuk keperluan protokol",
-  afterAddLiquidityReturnsDelta: "Custom LP token minting — memungkinkan receipt token unik per pool",
-  afterRemoveLiquidityReturnsDelta: "Custom withdrawal logic — LP menerima token dalam komposisi berbeda",
+  beforeInitialize:              "Can customize pool parameters at initialization (initial fee, tick spacing, etc.)",
+  afterInitialize:               "Enables oracle or additional state to be initialized right after pool creation",
+  beforeAddLiquidity:            "Can validate and restrict LP positions (e.g., whitelist or custom range)",
+  afterAddLiquidity:             "Enables automatic yield strategies or hedging when LPs add liquidity",
+  beforeRemoveLiquidity:         "Protects LPs from exploitation — can block sudden withdrawals by malicious actors",
+  afterRemoveLiquidity:          "Automatically distributes rewards when LPs exit their position",
+  beforeSwap:                    "Allows dynamic fees, MEV protection, and price validation before swaps",
+  afterSwap:                     "Enables on-chain analytics, automatic rebalancing, and fee redistribution",
+  beforeDonate:                  "Can control who is allowed to send donations to the pool",
+  afterDonate:                   "Automatically distributes donations to LPs or the protocol",
+  beforeSwapReturnsDelta:        "Custom AMM curve implementation — full control over price and swap token amounts",
+  afterSwapReturnsDelta:         "Can redirect a portion of swap output for protocol purposes",
+  afterAddLiquidityReturnsDelta: "Custom LP token minting — enables unique receipt tokens per pool",
+  afterRemoveLiquidityReturnsDelta: "Custom withdrawal logic — LPs receive tokens in a different composition",
 };
 
 const CB_CONS: Record<string, string> = {
-  beforeInitialize:              "Dapat mencegah pembuatan pool — sentralisasi kontrol pool creation",
-  afterInitialize:               "Menambah gas cost saat pool pertama kali dibuat",
-  beforeAddLiquidity:            "Dapat memblokir deposit LP secara sepihak — risiko sentralisasi",
-  afterAddLiquidity:             "Gas overhead pada setiap penambahan likuiditas",
-  beforeRemoveLiquidity:         "Dapat mengunci dana LP indefinitely — risiko kritikal jika owner jahat",
-  afterRemoveLiquidity:          "Gas overhead tambahan setiap penarikan likuiditas",
-  beforeSwap:                    "Dapat memblokir atau merevert swap — kepercayaan penuh pada hook owner diperlukan",
-  afterSwap:                     "Gas overhead pada setiap swap — potensi MEV extraction",
-  beforeDonate:                  "Dapat memblokir donation ke pool",
-  afterDonate:                   "Menambah kompleksitas aliran fee",
-  beforeSwapReturnsDelta:        "Dapat mengekstrak nilai dari swapper — SANGAT TINGGI tingkat kepercayaan yang dibutuhkan",
-  afterSwapReturnsDelta:         "Dapat mengubah jumlah akhir swap — potensi front-running oleh hook",
-  afterAddLiquidityReturnsDelta: "Dapat mengubah jumlah LP token yang diterima — risiko kritikal",
-  afterRemoveLiquidityReturnsDelta: "Dapat mengubah jumlah token yang ditarik — risiko kritikal",
+  beforeInitialize:              "Can prevent pool creation — centralizes control over pool creation",
+  afterInitialize:               "Adds gas cost when the pool is first created",
+  beforeAddLiquidity:            "Can unilaterally block LP deposits — centralization risk",
+  afterAddLiquidity:             "Gas overhead on every liquidity addition",
+  beforeRemoveLiquidity:         "Can lock LP funds indefinitely — critical risk if the owner is malicious",
+  afterRemoveLiquidity:          "Additional gas overhead on every liquidity withdrawal",
+  beforeSwap:                    "Can block or revert swaps — requires full trust in the hook owner",
+  afterSwap:                     "Gas overhead on every swap — potential MEV extraction",
+  beforeDonate:                  "Can block donations to the pool",
+  afterDonate:                   "Adds complexity to the fee flow",
+  beforeSwapReturnsDelta:        "Can extract value from swappers — VERY HIGH trust level required",
+  afterSwapReturnsDelta:         "Can modify the final swap amount — potential front-running by the hook",
+  afterAddLiquidityReturnsDelta: "Can alter the LP tokens received — critical risk",
+  afterRemoveLiquidityReturnsDelta: "Can alter the tokens withdrawn — critical risk",
 };
 
 // ── Archetype detection ─────────────────────────────────────────────────────
@@ -92,14 +92,14 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "solana_program", name: "Solana DEX Program", icon: "◎", color: "#9945FF",
       summary: (m, a) =>
-        `Program AMM on-chain Solana yang mengimplementasikan logik swap, manajemen posisi likuiditas, ` +
-        `dan fee collection secara penuh. ` +
-        (m.name ? `${m.name} adalah salah satu DEX terbesar di ekosistem Solana. ` : "") +
+        `An on-chain Solana AMM program implementing swap logic, liquidity position management, ` +
+        `and full fee collection. ` +
+        (m.name ? `${m.name} is one of the largest DEXs in the Solana ecosystem. ` : "") +
         (m.poolCount > 0
-          ? `Melayani lebih dari ${m.poolCount.toLocaleString()} pool aktif`
-          : "Pool sedang diindeks") +
+          ? `Serving more than ${m.poolCount.toLocaleString()} active pools`
+          : "Pools are being indexed") +
         (m.tvlUsd && m.tvlUsd > 1000
-          ? ` dengan total TVL ${formatUsdShort(m.tvlUsd)}.`
+          ? ` with total TVL of ${formatUsdShort(m.tvlUsd)}.`
           : "."),
     },
   },
@@ -108,9 +108,9 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "noop", name: "No-Op Hook", icon: "⬜", color: "#6b7280",
       summary: (m) =>
-        `Hook ini tidak mengimplementasikan callback apapun — berfungsi sebagai placeholder atau wrapper kosong. ` +
-        `Pool yang menggunakannya berperilaku identik dengan pool standar Uniswap v4 tanpa modifikasi apapun. ` +
-        (m.poolCount > 0 ? `Meski demikian, ${m.poolCount} pool tercatat menggunakan address ini sebagai hook.` : ""),
+        `This hook implements no callbacks — it functions as a placeholder or empty wrapper. ` +
+        `Pools using it behave identically to a standard Uniswap v4 pool with no modifications. ` +
+        (m.poolCount > 0 ? `Nevertheless, ${m.poolCount} pools are recorded using this address as a hook.` : ""),
     },
   },
   {
@@ -118,10 +118,10 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "custom_amm", name: "Custom AMM Protocol", icon: "⚡", color: "#f97316",
       summary: (m, a) =>
-        `Hook ini mengimplementasikan custom AMM curve melalui Delta Returns callbacks — mekanisme Uniswap v4 yang memungkinkan kontrol penuh atas aliran token. ` +
-        `Dengan ${a.length}/14 callback aktif, ini adalah hook yang sangat powerful dan kompleks. ` +
-        `${m.poolCount > 0 ? `Saat ini melayani ${m.poolCount} pool` : "Belum ada pool aktif"}` +
-        `${m.tvlUsd && m.tvlUsd > 1000 ? ` dengan total TVL sekitar $${(m.tvlUsd / 1e6).toFixed(2)}M.` : "."}`,
+        `This hook implements a custom AMM curve via Delta Returns callbacks — the Uniswap v4 mechanism enabling full control over token flows. ` +
+        `With ${a.length}/14 callbacks active, this is a highly powerful and complex hook. ` +
+        `${m.poolCount > 0 ? `Currently serving ${m.poolCount} pools` : "No active pools yet"}` +
+        `${m.tvlUsd && m.tvlUsd > 1000 ? ` with approximately $${(m.tvlUsd / 1e6).toFixed(2)}M TVL.` : "."}`,
     },
   },
   {
@@ -129,10 +129,10 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "defi_protocol", name: "Full DeFi Protocol Hook", icon: "🏦", color: "#8b5cf6",
       summary: (m, a) =>
-        `Hook ini adalah protokol DeFi lengkap yang mengontrol baik operasi swap maupun manajemen likuiditas. ` +
-        `Dengan ${a.length}/14 callback aktif, hook ini berperan sebagai lapisan protokol di atas Uniswap v4 — ` +
-        `kemungkinan besar sebuah lending protocol, yield optimizer, atau concentrated liquidity manager. ` +
-        `${m.poolCount > 0 ? `Digunakan oleh ${m.poolCount} pool aktif.` : ""}`,
+        `This hook is a full DeFi protocol controlling both swap operations and liquidity management. ` +
+        `With ${a.length}/14 callbacks active, it acts as a protocol layer on top of Uniswap v4 — ` +
+        `most likely a lending protocol, yield optimizer, or concentrated liquidity manager. ` +
+        `${m.poolCount > 0 ? `Used by ${m.poolCount} active pools.` : ""}`,
     },
   },
   {
@@ -140,11 +140,11 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "swap_hook", name: "Swap Control Hook", icon: "🔄", color: "#3b82f6",
       summary: (m, a) =>
-        `Hook ini berfokus pada kontrol dan optimasi swap tanpa menyentuh manajemen likuiditas. ` +
-        `Umumnya digunakan untuk dynamic fee (biaya berubah sesuai volatilitas), MEV protection, ` +
-        `TWAP oracle, atau limit order. ` +
-        `${m.poolCount > 0 ? `Aktif di ${m.poolCount} pool` : "Belum ada pool aktif"}` +
-        `${m.tvlUsd && m.tvlUsd > 0 ? ` — TVL $${formatUsdShort(m.tvlUsd)}.` : "."}`,
+        `This hook focuses on controlling and optimizing swaps without touching liquidity management. ` +
+        `Commonly used for dynamic fees (fees that change with volatility), MEV protection, ` +
+        `TWAP oracles, or limit orders. ` +
+        `${m.poolCount > 0 ? `Active across ${m.poolCount} pools` : "No active pools yet"}` +
+        `${m.tvlUsd && m.tvlUsd > 0 ? ` — TVL ${formatUsdShort(m.tvlUsd)}.` : "."}`,
     },
   },
   {
@@ -152,10 +152,10 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "lp_manager", name: "LP Manager Hook", icon: "💧", color: "#06b6d4",
       summary: (m, a) =>
-        `Hook ini mengontrol manajemen posisi liquidity provider tanpa menyentuh swap itu sendiri. ` +
-        `Biasanya digunakan untuk concentrated liquidity automation, LP position guards, ` +
-        `atau distribusi reward ke LP. ` +
-        `${m.poolCount > 0 ? `Digunakan oleh ${m.poolCount} pool dengan ${m.isVerified ? "source code terverifikasi" : "source code belum diverifikasi"}.` : ""}`,
+        `This hook controls liquidity provider position management without touching swaps themselves. ` +
+        `Typically used for concentrated liquidity automation, LP position guards, ` +
+        `or reward distribution to LPs. ` +
+        `${m.poolCount > 0 ? `Used by ${m.poolCount} pools with ${m.isVerified ? "verified source code" : "unverified source code"}.` : ""}`,
     },
   },
   {
@@ -163,9 +163,9 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "initializer", name: "Pool Initializer Hook", icon: "🔧", color: "#64748b",
       summary: (m) =>
-        `Hook ini hanya aktif saat pool pertama kali dibuat — mengkustomisasi parameter inisialisasi pool. ` +
-        `Setelah pool dibuat, hook tidak lagi berintervensi dalam operasi normal (swap/liquidity). ` +
-        `${m.poolCount > 0 ? `${m.poolCount} pool dibuat menggunakan hook ini.` : ""}`,
+        `This hook is only active when the pool is first created — customizing pool initialization parameters. ` +
+        `After the pool is created, the hook no longer intervenes in normal operations (swap/liquidity). ` +
+        `${m.poolCount > 0 ? `${m.poolCount} pools were created using this hook.` : ""}`,
     },
   },
   {
@@ -173,9 +173,9 @@ const ARCHETYPES: Array<{ test: (a: string[], m: HookMeta) => boolean; data: Arc
     data: {
       id: "fee_distributor", name: "Fee Distributor Hook", icon: "💰", color: "#eab308",
       summary: (m) =>
-        `Hook ini mengontrol aliran donasi dan distribusi fee di dalam pool. ` +
-        `Biasanya bagian dari protokol yang mendistribusikan pendapatan pool ke staker atau treasury. ` +
-        `${m.poolCount > 0 ? `${m.poolCount} pool terdaftar.` : ""}`,
+        `This hook controls donation flows and fee distribution within the pool. ` +
+        `Usually part of a protocol that distributes pool revenue to stakers or a treasury. ` +
+        `${m.poolCount > 0 ? `${m.poolCount} pools registered.` : ""}`,
     },
   },
 ];
@@ -199,9 +199,9 @@ export function describeHook(meta: HookMeta): HookDescription {
   const arch = found?.data ?? {
     id: "misc", name: "Multi-Purpose Hook", icon: "🪝", color: "#94a3b8",
     summary: (m: HookMeta, a: string[]) =>
-      `Hook ini mengimplementasikan kombinasi unik dari ${a.length} callback yang tidak cocok dengan pola standar. ` +
-      `Kemungkinan merupakan hook eksperimental atau protokol custom. ` +
-      `${m.poolCount > 0 ? `${m.poolCount} pool aktif menggunakan hook ini.` : ""}`,
+      `This hook implements a unique combination of ${a.length} callbacks that does not match a standard archetype. ` +
+      `Likely an experimental hook or custom protocol. ` +
+      `${m.poolCount > 0 ? `${m.poolCount} active pools use this hook.` : ""}`,
   };
 
   // Build pros list — from active callbacks, select top 4 most relevant
@@ -223,13 +223,13 @@ export function describeHook(meta: HookMeta): HookDescription {
   // Structural pros
   if (meta.isVerified) pros.push(
     meta.chainId === SOLANA_CHAIN_ID
-      ? "Program telah diaudit oleh pihak ketiga terpercaya — transparan dan aman digunakan"
-      : "Source code terverifikasi di Etherscan — transparan dan dapat diaudit publik"
+      ? "Program has been audited by a trusted third party — transparent and safe to use"
+      : "Source code verified on Etherscan — transparent and publicly auditable"
   );
-  if (meta.auditStatus === "AUDITED") pros.push("Telah melalui security audit oleh pihak ketiga");
-  if (meta.proxyType === "NONE") pros.push("Non-upgradeable — logik tidak dapat diubah oleh siapapun setelah deploy");
-  if (meta.poolCount >= 10) pros.push(`Teruji oleh ${meta.poolCount} pool aktif — memiliki track record nyata`);
-  if (meta.hookScore != null && meta.hookScore >= 80) pros.push(`HookScore tinggi (${meta.hookScore}/100) — melewati semua pemeriksaan keamanan otomatis`);
+  if (meta.auditStatus === "AUDITED") pros.push("Has undergone a security audit by a third party");
+  if (meta.proxyType === "NONE") pros.push("Non-upgradeable — logic cannot be changed by anyone after deployment");
+  if (meta.poolCount >= 10) pros.push(`Battle-tested by ${meta.poolCount} active pools — has a real track record`);
+  if (meta.hookScore != null && meta.hookScore >= 80) pros.push(`High HookScore (${meta.hookScore}/100) — passed all automated security checks`);
 
   // Build cons list
   const cons: string[] = [];
@@ -238,26 +238,26 @@ export function describeHook(meta: HookMeta): HookDescription {
   }
 
   // Structural cons
-  if (!meta.isVerified) cons.push("Source code belum diverifikasi — tidak dapat diaudit secara publik");
-  if (meta.proxyType !== "NONE") cons.push(`Proxy ${meta.proxyType} — logik dapat diupgrade oleh owner kapan saja tanpa notifikasi`);
-  if (active.length > 8) cons.push(`${active.length}/14 callback aktif — attack surface yang besar, gas cost lebih tinggi`);
-  if (meta.auditStatus === "FLAGGED") cons.push("Hook ini ditandai sebagai mencurigakan dalam sistem audit");
-  if (meta.hookScore != null && meta.hookScore < 50) cons.push(`HookScore rendah (${meta.hookScore}/100) — terdeteksi beberapa sinyal keamanan negatif`);
+  if (!meta.isVerified) cons.push("Source code not verified — cannot be publicly audited");
+  if (meta.proxyType !== "NONE") cons.push(`${meta.proxyType} proxy — logic can be upgraded by the owner at any time without notice`);
+  if (active.length > 8) cons.push(`${active.length}/14 callbacks active — large attack surface, higher gas cost`);
+  if (meta.auditStatus === "FLAGGED") cons.push("This hook has been flagged as suspicious by the audit system");
+  if (meta.hookScore != null && meta.hookScore < 50) cons.push(`Low HookScore (${meta.hookScore}/100) — several negative security signals detected`);
 
   // Risk summary
   const RISK_TEXT: Record<string, string> = {
-    LOW: "Profil risiko RENDAH. Hook ini aman untuk diinteraksikan berdasarkan analisis callback dan metadata.",
-    MEDIUM: "Profil risiko SEDANG. Beberapa callback memiliki potensi dampak pada aliran dana — lakukan review source code jika tersedia.",
-    HIGH: "Profil risiko TINGGI. Callback aktif dapat mempengaruhi jumlah token yang diterima. Verifikasi independen sangat disarankan.",
-    CRITICAL: "⚠ Profil risiko KRITIKAL. Hook ini memiliki kemampuan untuk mengontrol aliran token secara penuh. Jangan berinteraksi tanpa audit menyeluruh.",
-    UNKNOWN: "Risiko belum dianalisis — jalankan batch-analyze untuk mendapatkan penilaian.",
+    LOW: "LOW risk profile. This hook is safe to interact with based on callback analysis and metadata.",
+    MEDIUM: "MEDIUM risk profile. Some callbacks have potential impact on fund flows — review the source code if available.",
+    HIGH: "HIGH risk profile. Active callbacks can affect the token amounts received. Independent verification is strongly recommended.",
+    CRITICAL: "⚠ CRITICAL risk profile. This hook has the ability to fully control token flows. Do not interact without a thorough audit.",
+    UNKNOWN: "Risk not yet analyzed — run batch-analyze to get an assessment.",
   };
 
   const usageNotes: string[] = [];
-  if (meta.proxyType !== "NONE") usageNotes.push("monitor upgrade events di explorer");
-  if (!meta.isVerified) usageNotes.push("minta deployer untuk verify source code");
-  if (active.some((c) => c.includes("ReturnsDelta"))) usageNotes.push("audit custom accounting logic sebelum deposit besar");
-  if (meta.auditStatus !== "AUDITED") usageNotes.push("pertimbangkan menunggu audit selesai");
+  if (meta.proxyType !== "NONE") usageNotes.push("monitor upgrade events on the explorer");
+  if (!meta.isVerified) usageNotes.push("ask the deployer to verify the source code");
+  if (active.some((c) => c.includes("ReturnsDelta"))) usageNotes.push("audit custom accounting logic before large deposits");
+  if (meta.auditStatus !== "AUDITED") usageNotes.push("consider waiting for an audit to be completed");
 
   return {
     archetype:       arch.name,
@@ -270,6 +270,6 @@ export function describeHook(meta: HookMeta): HookDescription {
     cons:            cons.slice(0, 5),
     usageNote:       usageNotes.length > 0
       ? `Tips: ${usageNotes.join(", ")}.`
-      : "Hook ini dapat digunakan dengan tingkat kepercayaan sesuai risk level di atas.",
+      : "This hook can be used with the level of trust appropriate to the risk level above.",
   };
 }

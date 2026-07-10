@@ -368,11 +368,11 @@ export function LpMetricsPanel({ address }: { address: string }) {
           style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
           <Info size={11} className="text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <span className="text-amber-300 font-semibold">Fee APY estimasi</span>
-            <span className="text-gray-500"> — data volume belum tersedia. </span>
+            <span className="text-amber-300 font-semibold">Estimated Fee APY</span>
+            <span className="text-gray-500"> — volume data not yet available. </span>
             <span className="text-gray-400">
-              Berdasarkan historis fee tier <span className="text-amber-400">{feeLabel(repFee)}</span>:
-              rentang <span className="text-amber-400">{tierEst.low}% – {tierEst.high}%</span> APY.
+              Based on historical fee tier <span className="text-amber-400">{feeLabel(repFee)}</span>:
+              range <span className="text-amber-400">{tierEst.low}% – {tierEst.high}%</span> APY.
             </span>
           </div>
         </div>
@@ -435,8 +435,8 @@ export function LpMetricsPanel({ address }: { address: string }) {
           </div>
         </div>
         <p className="text-[10px] text-gray-600 mb-2">
-          Asumsikan posisi full-range — fee APY offset IL selama {holdDays} hari.
-          {apySource === "estimate" && " Garis fee berdasarkan estimasi tier."}
+          Assumes full-range position — fee APY offsetting IL over {holdDays} days.
+          {apySource === "estimate" && " Fee line based on tier estimate."}
         </p>
 
         <div style={{ height: 240 }}>
@@ -568,7 +568,7 @@ export function LpMetricsPanel({ address }: { address: string }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[10px] text-gray-700 mt-1">* Distribusi harian estimasi dari rata-rata 7d</p>
+          <p className="text-[10px] text-gray-700 mt-1">* Estimated daily distribution from 7d average</p>
         </div>
       )}
 

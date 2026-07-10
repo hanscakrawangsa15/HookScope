@@ -211,7 +211,7 @@ export function SwapPanel({ hookAddress, chainId, riskLevel, hookScore }: SwapPa
         await refetchAllowance();
       }
     } catch (e) {
-      setTxError(e instanceof Error ? e.message : "Auto-approve gagal — cek Anvil berjalan");
+      setTxError(e instanceof Error ? e.message : "Auto-approve failed — check that Anvil is running");
       setDemoApproving(false);
       return;
     }
@@ -237,7 +237,7 @@ export function SwapPanel({ hookAddress, chainId, riskLevel, hookScore }: SwapPa
           <div className="flex-1">
             <span className="text-yellow-300">DEMO MODE — Anvil Fork (chainId 31337)</span>
             <p className="text-yellow-700 text-[10px] font-normal mt-0.5">
-              Swap dikirim ke local fork — tidak ada token/ETH asli yang terpakai.
+              Swaps are sent to a local fork — no real tokens or ETH are used.
             </p>
           </div>
         </div>
@@ -299,12 +299,12 @@ export function SwapPanel({ hookAddress, chainId, riskLevel, hookScore }: SwapPa
                   style={{ background: "rgba(234,179,8,0.06)", border: "1px dashed rgba(234,179,8,0.35)" }}>
                   <div className="flex items-center gap-2">
                     <span>🧪</span>
-                    <span className="text-yellow-300 font-bold">DEMO MODE AKTIF — Anvil Fork</span>
+                    <span className="text-yellow-300 font-bold">DEMO MODE ACTIVE — Anvil Fork</span>
                     <span className="ml-auto font-mono text-yellow-700 text-[10px]">chainId 31337</span>
                   </div>
                   <p className="text-yellow-800 text-[10px]">
-                    Swap dikirim ke Anvil fork — tidak ada token asli yang digunakan.
-                    Konfirmasi MetaMask aman di sini.
+                    Swaps are sent to the Anvil fork — no real tokens are used.
+                    MetaMask confirmation is safe here.
                   </p>
                 </div>
               )}
@@ -410,7 +410,7 @@ export function SwapPanel({ hookAddress, chainId, riskLevel, hookScore }: SwapPa
                   ) : sending || confirming ? (
                     <><Loader2 size={14} className="animate-spin" /> Swapping…</>
                   ) : (
-                    <>🧪 Swap (Demo — tanpa popup)</>
+                    <>🧪 Swap (Demo — no popup)</>
                   )}
                 </button>
               ) : needsApproval ? (

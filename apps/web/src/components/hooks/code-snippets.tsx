@@ -130,7 +130,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 
-// Interface untuk ${p.name ?? "hook"} (${p.address})
+// Interface for ${p.name ?? "hook"} (${p.address})
 interface I${hookName} {
 ${p.functions
     .filter((f) => !f.isCallback)
@@ -139,10 +139,10 @@ ${p.functions
       const params = f.params.map((pp) => `${pp.type} ${pp.name || "param"}`).join(", ");
       return `    function ${f.name}(${params}) external${f.stateMutability === "view" ? " view" : ""};`;
     })
-    .join("\n") || "    // Tidak ada fungsi publik non-callback yang ditemukan"}
+    .join("\n") || "    // No public non-callback functions found"}
 }
 
-// Contoh integrasi dalam kontrak Anda
+// Example integration in your contract
 contract MyProtocol {
     IPoolManager public immutable poolManager;
     I${hookName} public immutable hook;
@@ -153,7 +153,7 @@ contract MyProtocol {
         poolManager = _poolManager;
         hook = I${hookName}(${p.address});
 
-        // Setup pool key dengan hook ini
+        // Setup pool key with this hook
         _poolKey = PoolKey({
             currency0: Currency.wrap(address(0)),
             currency1: Currency.wrap(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),
@@ -163,7 +163,7 @@ contract MyProtocol {
         });
     }
 
-    // Hook aktif: ${activeCallbacks.length > 0 ? activeCallbacks.join(", ") : "tidak ada"}
+    // Active callbacks: ${activeCallbacks.length > 0 ? activeCallbacks.join(", ") : "none"}
 }`;
 }
 
@@ -175,7 +175,7 @@ function buildCurlSnippet(p: Props): string {
 # 1. Get hook metadata
 curl "${baseUrl}/api/hooks/${p.address}" | jq .
 
-# 2. Get source code (jika verified)
+# 2. Get source code (if verified)
 curl "${baseUrl}/api/hooks/${p.address}/source" | jq '.sourceFiles[].name'
 
 # 3. Get security report
@@ -261,7 +261,7 @@ export function CodeSnippets(props: Props) {
 
       <div className="px-4 py-2 border-t border-white/6 text-[10px] text-gray-700"
         style={{ background: "rgba(0,0,0,0.1)" }}>
-        Snippet digenerate otomatis dari metadata hook. Sesuaikan token addresses, fee tier, dan ABI sebelum production.
+        Snippets are auto-generated from hook metadata. Adjust token addresses, fee tiers, and ABI before using in production.
       </div>
     </div>
   );

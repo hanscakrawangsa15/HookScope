@@ -174,18 +174,18 @@ export default async function SecurityPage() {
         <div className="card p-5 lg:col-span-2">
           <h2 className="font-semibold text-gray-300 mb-2 flex items-center gap-2">
             <Zap size={14} className="text-purple-400" />
-            Hooks dengan Delta Returns (Custom Accounting)
+            Hooks with Delta Returns (Custom Accounting)
           </h2>
           <p className="text-xs text-gray-500 mb-4">
-            Hooks ini dapat secara langsung mengubah jumlah token yang diterima/dikirim dalam setiap swap.
-            Paling powerful — dan paling berisiko jika tidak diaudit.
+            These hooks can directly modify the token amounts received/sent in each swap.
+            Most powerful — and most risky if unaudited.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             {[
-              { label: "beforeSwapReturnsDelta", desc: "Bisa ambil token sebelum swap" },
-              { label: "afterSwapReturnsDelta", desc: "Bisa ambil fee setelah swap" },
-              { label: "afterAddLiquidityReturnsDelta", desc: "Bisa kurangi LP deposit" },
-              { label: "afterRemoveLiquidityReturnsDelta", desc: "Bisa kurangi withdrawal" },
+              { label: "beforeSwapReturnsDelta", desc: "Can extract tokens before swap" },
+              { label: "afterSwapReturnsDelta", desc: "Can extract fees after swap" },
+              { label: "afterAddLiquidityReturnsDelta", desc: "Can reduce LP deposits" },
+              { label: "afterRemoveLiquidityReturnsDelta", desc: "Can reduce withdrawals" },
             ].map((d) => (
               <Link key={d.label} href={`/?callbacks=${d.label}`}
                 className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 hover:bg-purple-500/10 transition-colors">
@@ -204,8 +204,8 @@ export default async function SecurityPage() {
           Uniswap v4 Architecture Audit
         </h2>
         <p className="text-xs text-gray-500 mb-5">
-          Berdasarkan aturan <strong className="text-gray-400">isValidHookAddress()</strong> di v4-core:
-          delta-return flags wajib bergantung pada action flag yang sesuai
+          Based on the rules of <strong className="text-gray-400">isValidHookAddress()</strong> in v4-core:
+          delta-return flags must depend on the corresponding action flag
           (bit3→bit7, bit2→bit6, bit1→bit10, bit0→bit8).
         </p>
 
@@ -285,8 +285,8 @@ export default async function SecurityPage() {
               ))}
             </div>
             <p className="text-[10px] text-gray-600 mt-2">
-              Hooks yang mengklaim semua 14 permission bits sangat langka pada hook legitimate.
-              Ini biasanya menandakan hook malicious atau misconfigured.
+              Hooks claiming all 14 permission bits are extremely rare for legitimate hooks.
+              This usually indicates a malicious or misconfigured hook.
             </p>
           </div>
         )}
@@ -297,15 +297,15 @@ export default async function SecurityPage() {
         <h2 className="font-semibold text-gray-300 mb-4">HookScore™ Methodology</h2>
         <div className="grid sm:grid-cols-2 gap-6 text-xs text-gray-400">
           <div>
-            <p className="text-white font-medium mb-2">Penalti</p>
+            <p className="text-white font-medium mb-2">Penalties</p>
             <ul className="space-y-1.5">
               {[
-                ["-30", "Source code tidak terverifikasi"],
+                ["-30", "Source code not verified"],
                 ["-15", "Proxy/upgradeable pattern"],
-                ["-15", "Delta returns aktif"],
-                ["-20", "≥10 callbacks aktif (extreme surface)"],
-                ["-10", "≥7 callbacks aktif"],
-                ["-25%", "Dari callback risk score"],
+                ["-15", "Delta returns active"],
+                ["-20", "≥10 callbacks active (extreme surface)"],
+                ["-10", "≥7 callbacks active"],
+                ["-25%", "From callback risk score"],
               ].map(([pts, desc]) => (
                 <li key={desc} className="flex items-baseline gap-2">
                   <span className="text-red-400 font-mono w-10 flex-shrink-0">{pts}</span>
@@ -319,17 +319,17 @@ export default async function SecurityPage() {
             <ul className="space-y-1.5">
               <li className="flex items-baseline gap-2">
                 <span className="text-green-400 font-mono w-10">+15</span>
-                <span>Audit oleh firma reputable</span>
+                <span>Audit by reputable firm</span>
               </li>
             </ul>
             <p className="text-white font-medium mt-4 mb-2">Data Sources</p>
             <ul className="space-y-1.5">
               {[
-                "Address bitmask (deterministic, tidak bisa dipalsukan)",
+                "Address bitmask (deterministic, cannot be faked)",
                 "Etherscan — source code verification",
                 "Bytecode scan — SELFDESTRUCT, DELEGATECALL",
                 "Proxy detection — EIP-1967/1822/1167",
-                "Slither (jika source tersedia)",
+                "Slither (if source available)",
               ].map((s) => (
                 <li key={s} className="flex items-start gap-2">
                   <span className="text-blue-400 mt-0.5">•</span><span>{s}</span>

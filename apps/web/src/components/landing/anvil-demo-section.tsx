@@ -108,13 +108,13 @@ export function AnvilDemoSection() {
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-4"
           style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#6ee7b7" }}>
           <FlaskConical size={12} />
-          Demo Lokal — Anvil Testnet
+          Local Demo — Anvil Testnet
         </div>
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-          Coba transaksi smart contract sekarang
+          Try a smart contract transaction right now
         </h2>
         <p className="text-gray-400 max-w-xl mx-auto">
-          Hubungkan wallet ke Anvil lokal dan jalankan transaksi nyata di mainnet fork — tanpa ETH asli.
+          Connect your wallet to a local Anvil instance and run real transactions on a mainnet fork — no real ETH needed.
         </p>
       </div>
 
@@ -127,14 +127,14 @@ export function AnvilDemoSection() {
             <span className="font-mono text-sm" style={{ color: step1Done ? "#10b981" : "#6366f1" }}>01</span>
             {step1Done && <CheckCircle2 size={14} className="text-emerald-400" />}
             <h3 className="font-semibold text-sm" style={{ color: step1Done ? "#6ee7b7" : "#e5e7eb" }}>
-              Hubungkan Wallet
+              Connect Wallet
             </h3>
           </div>
 
           {step1Done ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-3">
-                <CheckCircle2 size={15} /> Wallet terhubung
+                <CheckCircle2 size={15} /> Wallet connected
               </div>
               <div className="rounded-lg px-3 py-2 font-mono text-xs text-gray-400 truncate"
                 style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.15)" }}>
@@ -144,8 +144,8 @@ export function AnvilDemoSection() {
           ) : (
             <>
               <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                Klik tombol di bawah untuk connect wallet (MetaMask / Brave Wallet).
-                Pilih wallet yang ingin kamu pakai.
+                Click the button below to connect your wallet (MetaMask / Brave Wallet).
+                Choose the wallet you want to use.
               </p>
               <button
                 onClick={() => open()}
@@ -166,17 +166,17 @@ export function AnvilDemoSection() {
             <span className="font-mono text-sm" style={{ color: step2Done ? "#10b981" : step1Done ? "#6366f1" : "#374151" }}>02</span>
             {step2Done && <CheckCircle2 size={14} className="text-emerald-400" />}
             <h3 className="font-semibold text-sm" style={{ color: step2Done ? "#6ee7b7" : step1Done ? "#e5e7eb" : "#6b7280" }}>
-              Switch ke Anvil (31337)
+              Switch to Anvil (31337)
             </h3>
           </div>
 
           {step2Done ? (
             <>
               <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-3">
-                <CheckCircle2 size={15} /> Terhubung ke Anvil
+                <CheckCircle2 size={15} /> Connected to Anvil
               </div>
               {/* Show test account info here */}
-              <p className="text-gray-500 text-xs mb-2">Import test account ke MetaMask:</p>
+              <p className="text-gray-500 text-xs mb-2">Import a test account into MetaMask:</p>
               <div className="space-y-2">
                 {TEST_ACCOUNTS.map((acc) => (
                   <div key={acc.address} className="rounded-lg p-2.5"
@@ -194,20 +194,20 @@ export function AnvilDemoSection() {
                       className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
                       style={{ background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)", color: "#c4b5fd" }}
                     >
-                      {copied === `k-${acc.address}` ? <><Check size={10} className="text-emerald-400" /> Disalin!</> : <><Copy size={10} /> Copy Private Key</>}
+                      {copied === `k-${acc.address}` ? <><Check size={10} className="text-emerald-400" /> Copied!</> : <><Copy size={10} /> Copy Private Key</>}
                     </button>
                   </div>
                 ))}
               </div>
               <p className="text-gray-700 text-[10px] mt-2">
-                MetaMask → ikon akun → Import Account → paste key
+                MetaMask → account icon → Import Account → paste key
               </p>
             </>
           ) : (
             <>
               <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                Tambahkan Anvil Local Fork (chainId 31337) ke wallet kamu.
-                Semua kontrak Uniswap v4 sudah ada di fork ini.
+                Add Anvil Local Fork (chainId 31337) to your wallet.
+                All Uniswap v4 contracts are already deployed on this fork.
               </p>
               {switchError && (
                 <div className="flex items-start gap-1.5 mb-3 text-orange-300 text-xs"
@@ -222,10 +222,10 @@ export function AnvilDemoSection() {
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: "rgba(16,185,129,0.2)", border: "1px solid rgba(16,185,129,0.4)", color: "#86efac" }}
               >
-                {switching ? <><Loader2 size={14} className="animate-spin" /> Switching…</> : <><Zap size={14} /> Switch ke Anvil (31337)</>}
+                {switching ? <><Loader2 size={14} className="animate-spin" /> Switching…</> : <><Zap size={14} /> Switch to Anvil (31337)</>}
               </button>
               {!step1Done && (
-                <p className="text-gray-700 text-xs mt-2 text-center">Selesaikan langkah 1 dulu</p>
+                <p className="text-gray-700 text-xs mt-2 text-center">Complete step 1 first</p>
               )}
             </>
           )}
@@ -238,7 +238,7 @@ export function AnvilDemoSection() {
             <span className="font-mono text-sm" style={{ color: step3Done ? "#10b981" : step2Done ? "#6366f1" : "#374151" }}>03</span>
             {step3Done && <CheckCircle2 size={14} className="text-emerald-400" />}
             <h3 className="font-semibold text-sm" style={{ color: step3Done ? "#6ee7b7" : step2Done ? "#e5e7eb" : "#6b7280" }}>
-              Kirim Demo Transaksi
+              Send Demo Transaction
             </h3>
           </div>
 
@@ -303,12 +303,12 @@ export function AnvilDemoSection() {
                   style={{ background: confirming ? "rgba(59,130,246,0.07)" : "rgba(16,185,129,0.07)", border: `1px solid ${confirming ? "rgba(59,130,246,0.2)" : "rgba(16,185,129,0.25)"}` }}>
                   {confirming ? (
                     <div className="flex items-center gap-2 text-blue-300">
-                      <Loader2 size={11} className="animate-spin" /> Mengkonfirmasi…
+                      <Loader2 size={11} className="animate-spin" /> Confirming…
                     </div>
                   ) : (
                     <div>
                       <div className="flex items-center gap-1.5 text-emerald-300 font-semibold mb-1">
-                        <CheckCircle2 size={12} /> Transaksi berhasil!
+                        <CheckCircle2 size={12} /> Transaction confirmed!
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-gray-500 text-[10px] truncate">{txHash.slice(0, 20)}…</span>
@@ -325,22 +325,22 @@ export function AnvilDemoSection() {
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm cursor-pointer transition-all disabled:opacity-60"
                 style={{ background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", color: "#a5b4fc" }}
               >
-                {(sending || minting) ? <><Loader2 size={14} className="animate-spin" /> Mengirim…</>
-                  : confirming ? <><Loader2 size={14} className="animate-spin" /> Konfirmasi…</>
-                  : <><Zap size={14} /> Kirim Transaksi Demo</>}
+                {(sending || minting) ? <><Loader2 size={14} className="animate-spin" /> Sending…</>
+                  : confirming ? <><Loader2 size={14} className="animate-spin" /> Confirming…</>
+                  : <><Zap size={14} /> Send Demo Transaction</>}
               </button>
             </>
           ) : (
             <div className="text-gray-600 text-sm text-center py-6">
-              Selesaikan langkah 1 dan 2 terlebih dahulu
+              Complete steps 1 and 2 first
             </div>
           )}
         </div>
       </div>
 
       <p className="text-center text-gray-600 text-xs">
-        Semua transaksi berjalan di Anvil local fork — tidak ada ETH asli yang terpakai.
-        Jalankan <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded">pnpm anvil:start</code> terlebih dahulu.
+        All transactions run on an Anvil local fork — no real ETH is used.
+        Run <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded">pnpm anvil:start</code> first.
       </p>
     </section>
   );

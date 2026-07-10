@@ -157,8 +157,8 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
                   : "text-yellow-300"
               )}>
                 {criticalThreats.length > 0
-                  ? "Peringatan: Alamat ini dilaporkan terlibat dalam aktivitas berbahaya"
-                  : "Perhatian: Alamat ini memiliki sinyal keamanan negatif"}
+                  ? "Warning: This address has been reported for involvement in malicious activity"
+                  : "Caution: This address has negative security signals"}
               </p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {threatFlags.map((f) => (
@@ -175,13 +175,13 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
                 ))}
               </div>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Data dari{" "}
+                Data from{" "}
                 <span className="text-gray-300">
                   {[...new Set(threatFlags.flatMap((f) => (f.reportedBy ?? "GoPlus").split(", ")))].join(", ")}
                 </span>
                 {" "}— GoPlus Security API.{" "}
-                Harap berhati-hati saat berinteraksi dengan pool yang menggunakan hook ini.
-                Lakukan verifikasi independen sebelum menyetorkan dana.
+                Exercise caution when interacting with pools that use this hook.
+                Perform independent verification before depositing funds.
               </p>
             </div>
           </div>
@@ -244,7 +244,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
             <div className="mt-3 flex items-center gap-2 text-sm p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 w-fit">
               <AlertTriangle size={14} className="text-yellow-400 flex-shrink-0" />
               <span className="text-yellow-300">
-                {hook.proxyType} Proxy — logic dapat diupgrade oleh owner
+                {hook.proxyType} Proxy — logic can be upgraded by the owner
               </span>
               {hook.implementationAddress && (
                 <Link href={`/hooks/${hook.implementationAddress}?chain=${hook.chainId}`}
@@ -259,11 +259,11 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
           {hasWarning && (
             <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
               <div className="flex items-center gap-2 text-red-400 text-sm font-semibold mb-1">
-                <AlertTriangle size={14} /> Peringatan Risiko Tinggi
+                <AlertTriangle size={14} /> High Risk Warning
               </div>
               <p className="text-xs text-red-300">
-                Hook ini mengimplementasikan callback berisiko tinggi yang dapat mengubah aliran token atau memblokir operasi.
-                Wajib review source code sebelum berinteraksi dengan pool yang menggunakan hook ini.
+                This hook implements high-risk callbacks that can alter token flow or block operations.
+                Review the source code before interacting with any pool that uses this hook.
               </p>
             </div>
           )}
@@ -317,7 +317,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
           {/* Pros */}
           <div>
             <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <ThumbsUp size={11} /> Kelebihan
+              <ThumbsUp size={11} /> Strengths
             </p>
             <ul className="space-y-1.5">
               {hookDesc.pros.map((p, i) => (
@@ -327,7 +327,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
                 </li>
               ))}
               {hookDesc.pros.length === 0 && (
-                <li className="text-xs text-gray-600">Tidak ada kelebihan yang terdeteksi</li>
+                <li className="text-xs text-gray-600">No strengths detected</li>
               )}
             </ul>
           </div>
@@ -335,7 +335,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
           {/* Cons */}
           <div>
             <p className="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <ThumbsDown size={11} /> Kekurangan
+              <ThumbsDown size={11} /> Weaknesses
             </p>
             <ul className="space-y-1.5">
               {hookDesc.cons.map((c, i) => (
@@ -345,7 +345,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
                 </li>
               ))}
               {hookDesc.cons.length === 0 && (
-                <li className="text-xs text-gray-600">Tidak ada kekurangan yang terdeteksi</li>
+                <li className="text-xs text-gray-600">No weaknesses detected</li>
               )}
             </ul>
           </div>
@@ -364,19 +364,19 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
         {/* ─── Left column ─────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Callbacks dengan penjelasan */}
+          {/* Callbacks with descriptions */}
           <section className="card p-6">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">
               {isSolana ? "Program Capabilities" : `Active Callbacks (${activeCallbacks.length}/14)`}
             </h2>
             <p className="text-xs text-gray-500 mb-5">
               {isSolana
-                ? "Operasi lifecycle yang diimplementasikan oleh program Solana ini."
-                : "Decoded dari 14 bit terakhir address — tidak bisa dipalsukan setelah deploy."}
+                ? "Lifecycle operations implemented by this Solana program."
+                : "Decoded from the last 14 bits of the address — cannot be faked after deployment."}
             </p>
 
             {activeCallbacks.length === 0 ? (
-              <p className="text-gray-500 text-sm">Tidak ada callback aktif (no-op hook)</p>
+              <p className="text-gray-500 text-sm">No active callbacks (no-op hook)</p>
             ) : (
               <div className="space-y-3">
                 {activeCallbacks.map((cbName) => {
@@ -435,7 +435,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
               <details className="mt-4">
                 <summary className="text-xs text-gray-600 cursor-pointer hover:text-gray-400 flex items-center gap-1">
                   <ChevronDown size={12} />
-                  {14 - activeCallbacks.length} callback tidak aktif
+                  {14 - activeCallbacks.length} inactive callbacks
                 </summary>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {Object.keys(CALLBACK_DOCS)
@@ -454,17 +454,17 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
           {hasDeltaReturns && (
             <section className="card p-5 border-purple-500/20 bg-purple-500/5">
               <h2 className="text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
-                <Info size={14} /> Apa itu Delta Returns?
+                <Info size={14} /> What are Delta Returns?
               </h2>
               <p className="text-xs text-gray-300 leading-relaxed">
-                Hook ini menggunakan <strong className="text-purple-300">Custom Accounting (Delta Returns)</strong> —
-                mekanisme Uniswap v4 yang memungkinkan hook untuk secara langsung mempengaruhi jumlah token
-                yang diterima atau dikirim dalam operasi swap/liquidity.
+                This hook uses <strong className="text-purple-300">Custom Accounting (Delta Returns)</strong> —
+                a Uniswap v4 mechanism that allows a hook to directly influence the token amounts
+                received or sent in swap/liquidity operations.
               </p>
               <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                Ini adalah fitur paling powerful di Uniswap v4 — memungkinkan pembuatan AMM curve custom,
-                fee extraction di level hook, atau custom accounting tanpa perlu deploy pool baru.
-                Namun juga berisiko: hook dapat mengambil sebagian token dari setiap transaksi.
+                This is the most powerful feature in Uniswap v4 — enabling custom AMM curves,
+                fee extraction at the hook level, or custom accounting without deploying a new pool.
+                It also carries risk: the hook can take a portion of tokens from every transaction.
               </p>
             </section>
           )}
@@ -525,7 +525,7 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
                 <Code2 size={13} className="text-yellow-400" /> ABI Explorer
                 {hook.functions.length > 0 && (
                   <span className="badge bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-[10px] ml-1">
-                    {hook.functions.length} fungsi
+                    {hook.functions.length} functions
                   </span>
                 )}
               </h2>

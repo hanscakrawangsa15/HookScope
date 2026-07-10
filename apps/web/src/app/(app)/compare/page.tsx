@@ -93,7 +93,7 @@ export default function ComparePage() {
 
   const fetchHook = useCallback(async (index: number, address: string) => {
     if (!address.match(/^0x[0-9a-fA-F]{40}$/)) {
-      setErrors((e) => { const n = [...e]; n[index] = "Format address tidak valid"; return n; });
+      setErrors((e) => { const n = [...e]; n[index] = "Invalid address format"; return n; });
       return;
     }
     setLoading((l) => { const n = [...l]; n[index] = true; return n; });
@@ -108,7 +108,7 @@ export default function ComparePage() {
       setHooks((h)     => { const n = [...h]; n[index] = hook; return n; });
       setAnalytics((a) => { const n = [...a]; n[index] = analytic; return n; });
     } catch {
-      setErrors((e) => { const n = [...e]; n[index] = "Hook tidak ditemukan"; return n; });
+      setErrors((e) => { const n = [...e]; n[index] = "Hook not found"; return n; });
       setHooks((h) => { const n = [...h]; n[index] = null; return n; });
     } finally {
       setLoading((l) => { const n = [...l]; n[index] = false; return n; });
@@ -148,7 +148,7 @@ export default function ComparePage() {
           <GitCompare size={26} className="text-blue-400" />
           <span>Hook <span className="gradient-text">Comparator</span></span>
         </h1>
-        <p className="text-gray-500 mt-1 text-sm">Bandingkan hingga 4 hook secara detail — TVL, trader aktif, fee LP, dan risiko IL</p>
+        <p className="text-gray-500 mt-1 text-sm">Compare up to 4 hooks in detail — TVL, active traders, LP fees, and IL risk</p>
       </div>
 
       {/* ── Address inputs ──────────────────────────────────────────────────── */}
@@ -196,15 +196,15 @@ export default function ComparePage() {
 
       {addresses.length < 4 && (
         <button onClick={addSlot} className="btn-ghost text-sm -mt-4">
-          <Plus size={13} /> Tambah Hook
+          <Plus size={13} /> Add Hook
         </button>
       )}
 
       {n < 2 && (
         <div className="text-center py-24 text-gray-600">
           <GitCompare size={52} className="mx-auto mb-4 opacity-20" />
-          <p className="text-sm">Masukkan minimal 2 address hook untuk mulai membandingkan</p>
-          <p className="text-xs mt-1 text-gray-700">Tekan Enter atau klik di luar kolom input</p>
+          <p className="text-sm">Enter at least 2 hook addresses to start comparing</p>
+          <p className="text-xs mt-1 text-gray-700">Press Enter or click outside the input field</p>
         </div>
       )}
 
@@ -253,7 +253,7 @@ export default function ComparePage() {
                     <Kv label="TVL"     value={formatTvl(a?.tvlUsd ?? hook.tvlUsd ?? 0)} color={HOOK_COLORS[idx]} />
                     <Kv label="Vol 7d"  value={formatTvl(a?.volume7dUsd ?? 0)} />
                     <Kv label="Pools"   value={String(hook.poolCount)} />
-                    <Kv label="LP Unik" value={String(a?.uniqueLps ?? "—")} />
+                    <Kv label="Unique LPs" value={String(a?.uniqueLps ?? "—")} />
                     <Kv label="Fee APY" value={feeApy > 0 ? `${feeApy.toFixed(1)}%` : "—"} color={feeApy > 20 ? "#10b981" : undefined} />
                     <Kv label="Callbacks" value={`${Object.values(hook.callbacks).filter(Boolean).length}/14`} />
                   </div>
@@ -276,7 +276,7 @@ export default function ComparePage() {
           </div>
 
           {/* ── Section: TVL & Volume Comparison ─────────────────────────── */}
-          <ChartSection title="TVL & Volume Perbandingan" icon={<Droplets size={14} className="text-blue-400" />}>
+          <ChartSection title="TVL & Volume Comparison" icon={<Droplets size={14} className="text-blue-400" />}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Grouped bar: TVL + Vol7d + Vol30d */}
@@ -336,24 +336,24 @@ export default function ComparePage() {
 
               {/* Winner badges */}
               <div className="space-y-3">
-                <p className="text-xs text-gray-500 mb-3">Perbandingan Cepat</p>
+                <p className="text-xs text-gray-500 mb-3">Quick Comparison</p>
                 {[
                   {
-                    label: "TVL Tertinggi",
+                    label: "Highest TVL",
                     icon: <Droplets size={13} />,
                     values: loaded.map(({ hook, anal }) => anal?.analytics?.tvlUsd ?? hook.tvlUsd ?? 0),
                     fmt: fmtCompact,
                     higher: true,
                   },
                   {
-                    label: "Volume 7d Terbesar",
+                    label: "Largest 7d Volume",
                     icon: <TrendingUp size={13} />,
                     values: loaded.map(({ anal }) => anal?.analytics?.volume7dUsd ?? 0),
                     fmt: fmtCompact,
                     higher: true,
                   },
                   {
-                    label: "LP Aktif Terbanyak",
+                    label: "Most Active LPs",
                     icon: <Users size={13} />,
                     values: loaded.map(({ anal }) => anal?.analytics?.uniqueLps ?? 0),
                     fmt: (v: number) => String(v),
@@ -374,7 +374,7 @@ export default function ComparePage() {
                     higher: true,
                   },
                   {
-                    label: "Callbacks Aktif",
+                    label: "Active Callbacks",
                     icon: <Zap size={13} />,
                     values: loaded.map(({ hook }) => Object.values(hook.callbacks).filter(Boolean).length),
                     fmt: (v: number) => `${v}/14`,
@@ -405,12 +405,12 @@ export default function ComparePage() {
           </ChartSection>
 
           {/* ── Section: Active Traders & LP Activity ─────────────────────── */}
-          <ChartSection title="Aktivitas Trader & LP" icon={<Users size={14} className="text-purple-400" />}>
+          <ChartSection title="Trader & LP Activity" icon={<Users size={14} className="text-purple-400" />}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* LP vs Swap Count bars */}
               <div>
-                <p className="text-xs text-gray-500 mb-3">LP Unik & Total Swap per Hook</p>
+                <p className="text-xs text-gray-500 mb-3">Unique LPs & Total Swaps per Hook</p>
                 <div style={{ height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -430,12 +430,12 @@ export default function ComparePage() {
                         contentStyle={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
                         formatter={(v: number, name: string) => [
                           v.toLocaleString(),
-                          name === "lps" ? "LP Unik" : name === "swaps" ? "Total Swap" : "Pools",
+                          name === "lps" ? "Unique LPs" : name === "swaps" ? "Total Swaps" : "Pools",
                         ]}
                       />
                       <Legend formatter={(n: string) => (
                         <span style={{ fontSize: 10, color: "#9ca3af" }}>
-                          {n === "lps" ? "LP Unik" : n === "swaps" ? "Total Swap" : "Pools"}
+                          {n === "lps" ? "Unique LPs" : n === "swaps" ? "Total Swaps" : "Pools"}
                         </span>
                       )} />
                       <Bar dataKey="lps" name="lps" radius={[3,3,0,0]}>
@@ -450,7 +450,7 @@ export default function ComparePage() {
 
               {/* Risk Profile Radar */}
               <div>
-                <p className="text-xs text-gray-500 mb-3">Profil Keamanan (0–100)</p>
+                <p className="text-xs text-gray-500 mb-3">Security Profile (0–100)</p>
                 <div style={{ height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart
@@ -491,7 +491,7 @@ export default function ComparePage() {
           <ChartSection
             title="Fee LP vs Impermanent Loss"
             icon={<AlertTriangle size={14} className="text-orange-400" />}
-            subtitle="Perbandingan potensi keuntungan fee LP terhadap risiko IL pada berbagai skenario harga"
+            subtitle="Comparison of potential LP fee earnings against IL risk across various price scenarios"
           >
             {/* Fee APY summary */}
             <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
@@ -516,13 +516,13 @@ export default function ComparePage() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">IL saat +100%</span>
+                        <span className="text-gray-500">IL at +100%</span>
                         <span className="text-red-400">-{il100.toFixed(1)}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Break-even</span>
                         <span className={bedays && bedays < 30 ? "text-emerald-400" : "text-orange-400"}>
-                          {bedays ? `${bedays} hari` : "∞"}
+                          {bedays ? `${bedays} days` : "∞"}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -540,7 +540,7 @@ export default function ComparePage() {
             {/* IL Curve Comparison */}
             <div>
               <p className="text-xs text-gray-500 mb-3">
-                Kurva IL + Net P&L (fee 30 hari - IL) per skenario perubahan harga
+                IL Curve + Net P&L (30-day fee - IL) per price change scenario
               </p>
               <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -614,14 +614,14 @@ export default function ComparePage() {
                 </ResponsiveContainer>
               </div>
               <p className="text-[10px] text-gray-700 mt-2">
-                * IL merah = kerugian dari divergensi harga. Garis putus-putus = Net P&L setelah estimasi fee 30 hari.
-                Semakin tinggi garis net diatas 0%, semakin menguntungkan bagi LP.
+                * Red IL = loss from price divergence. Dashed line = Net P&L after estimated 30-day fees.
+                The higher the net line above 0%, the more profitable it is for LPs.
               </p>
             </div>
           </ChartSection>
 
           {/* ── Section: Pros/Cons Comparison ────────────────────────────── */}
-          <ChartSection title="Kelebihan & Kekurangan" icon={<Info size={14} className="text-indigo-400" />}>
+          <ChartSection title="Pros & Cons" icon={<Info size={14} className="text-indigo-400" />}>
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
               {loaded.map(({ hook, idx }) => {
                 const desc = describeHook({
@@ -641,7 +641,7 @@ export default function ComparePage() {
 
                     <div>
                       <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                        <ThumbsUp size={9} /> Kelebihan
+                        <ThumbsUp size={9} /> Pros
                       </p>
                       <ul className="space-y-1">
                         {desc.pros.slice(0, 3).map((p, i) => (
@@ -653,7 +653,7 @@ export default function ComparePage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                        <ThumbsDown size={9} /> Kekurangan
+                        <ThumbsDown size={9} /> Cons
                       </p>
                       <ul className="space-y-1">
                         {desc.cons.slice(0, 3).map((c, i) => (
@@ -671,7 +671,7 @@ export default function ComparePage() {
 
           {/* ── Section: Callback Matrix ─────────────────────────────────── */}
           <ChartSection title="Callback Matrix" icon={<Zap size={14} className="text-yellow-400" />}
-            subtitle="Kuning = perbedaan antar hook">
+            subtitle="Yellow = differences between hooks">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -715,11 +715,11 @@ export default function ComparePage() {
           </ChartSection>
 
           {/* ── Section: Overview Table ───────────────────────────────────── */}
-          <ChartSection title="Detail Properti" icon={<Shield size={14} className="text-gray-400" />}>
+          <ChartSection title="Property Details" icon={<Shield size={14} className="text-gray-400" />}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/8">
-                  <th className="p-3 text-left text-gray-600 font-medium text-xs w-36">Properti</th>
+                  <th className="p-3 text-left text-gray-600 font-medium text-xs w-36">Property</th>
                   {loaded.map(({ hook, idx }) => (
                     <th key={hook.address} className="p-3 text-left font-medium">
                       <div className="font-mono text-xs mb-0.5" style={{ color: HOOK_COLORS[idx] }}>
@@ -784,7 +784,7 @@ export default function ComparePage() {
                     </td>
                   ))}
                 </TR>
-                <TR label="LP Unik">
+                <TR label="Unique LPs">
                   {loaded.map(({ hook, anal }) => (
                     <td key={hook.address} className="p-3 text-xs text-gray-300">
                       {anal?.analytics?.uniqueLps ?? "—"}
@@ -816,7 +816,7 @@ export default function ComparePage() {
                     {shortAddress(hook.address)}
                   </p>
                   {hook.securityFlags.length === 0 ? (
-                    <p className="text-[11px] text-gray-600">Tidak ada flag keamanan terdeteksi</p>
+                    <p className="text-[11px] text-gray-600">No security flags detected</p>
                   ) : (
                     <div className="space-y-1.5">
                       {hook.securityFlags.map((f) => (

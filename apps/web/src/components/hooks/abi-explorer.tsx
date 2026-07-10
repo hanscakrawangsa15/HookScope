@@ -195,7 +195,7 @@ export function AbiExplorer({ address, name, functions }: Props) {
     return (
       <div className="card p-8 text-center">
         <Eye size={28} className="mx-auto mb-2 text-gray-700" />
-        <p className="text-sm text-gray-600">ABI tidak tersedia — source code belum terverifikasi</p>
+        <p className="text-sm text-gray-600">ABI not available — source code is not yet verified</p>
       </div>
     );
   }
@@ -208,7 +208,7 @@ export function AbiExplorer({ address, name, functions }: Props) {
         <div className="flex items-center gap-2">
           <Zap size={14} className="text-yellow-400" />
           <span className="text-xs font-bold text-gray-300">ABI Explorer</span>
-          <span className="text-[10px] text-gray-600">{functions.length} fungsi</span>
+          <span className="text-[10px] text-gray-600">{functions.length} function{functions.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={handleCopyAbi}
@@ -240,7 +240,7 @@ export function AbiExplorer({ address, name, functions }: Props) {
                 color: filter === tab ? colors[tab] : "#6b7280",
                 borderBottom: filter === tab ? `2px solid ${colors[tab]}` : "2px solid transparent",
               }}>
-              {tab === "all" ? "Semua" : tab} ({counts[tab]})
+              {tab === "all" ? "All" : tab} ({counts[tab]})
             </button>
           );
         })}
@@ -257,7 +257,7 @@ export function AbiExplorer({ address, name, functions }: Props) {
           />
         ))}
         {!filtered.length && (
-          <p className="text-center text-xs text-gray-600 py-8">Tidak ada fungsi di kategori ini</p>
+          <p className="text-center text-xs text-gray-600 py-8">No functions in this category</p>
         )}
       </div>
     </div>

@@ -138,7 +138,7 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
         );
         setSelected(main?.name ?? d.sourceFiles?.[0]?.name ?? "");
       })
-      .catch(() => setError("Source code tidak tersedia"))
+      .catch(() => setError("Source code not available"))
       .finally(() => setLoading(false));
   }, [address, isVerified, chainId]);
 
@@ -175,9 +175,9 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
     return (
       <div className="card p-8 text-center">
         <AlertTriangle size={32} className="mx-auto mb-3 text-yellow-600 opacity-60" />
-        <p className="text-sm text-gray-500 font-medium">Source Code Belum Terverifikasi</p>
+        <p className="text-sm text-gray-500 font-medium">Source Code Not Verified</p>
         <p className="text-xs text-gray-700 mt-1">
-          Deployer belum submit source code ke Etherscan.
+          The deployer has not submitted source code to Etherscan.
         </p>
         <a
           href={`https://etherscan.io/address/${address}`}
@@ -185,7 +185,7 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
           rel="noreferrer"
           className="btn-ghost text-xs mt-4 inline-flex items-center gap-1"
         >
-          <ExternalLink size={11} /> Lihat di Etherscan
+          <ExternalLink size={11} /> View on Etherscan
         </a>
       </div>
     );
@@ -195,7 +195,7 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
     return (
       <div className="card p-8 text-center">
         <div className="w-6 h-6 border border-blue-500/40 border-t-blue-400 rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-gray-600">Memuat source code…</p>
+        <p className="text-xs text-gray-600">Loading source code…</p>
       </div>
     );
   }
@@ -204,7 +204,7 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
     return (
       <div className="card p-8 text-center">
         <AlertTriangle size={28} className="mx-auto mb-2 text-orange-600" />
-        <p className="text-sm text-gray-500">{error ?? "Source code tidak ditemukan"}</p>
+        <p className="text-sm text-gray-500">{error ?? "Source code not found"}</p>
       </div>
     );
   }
@@ -228,17 +228,17 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
             <div className="flex items-center gap-1">
               <input
                 className="h-6 px-2 rounded text-xs bg-white/8 border border-white/10 text-gray-300 focus:outline-none focus:border-blue-500/40 w-32"
-                placeholder="Cari…"
+                placeholder="Search…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); if (e.key === "Escape") setSearchOpen(false); }}
                 autoFocus
               />
               {matchLine != null && (
-                <span className="text-[10px] text-green-400">→ baris {matchLine}</span>
+                <span className="text-[10px] text-green-400">→ line {matchLine}</span>
               )}
               {searchQuery && matchLine === null && (
-                <span className="text-[10px] text-red-400">tidak ditemukan</span>
+                <span className="text-[10px] text-red-400">not found</span>
               )}
               <button onClick={() => setSearchOpen(false)} className="text-gray-600 hover:text-gray-400">
                 <X size={12} />
@@ -309,7 +309,7 @@ export function SourceViewer({ address, isVerified, chainId }: Props) {
             </SyntaxHighlighter>
           ) : (
             <div className="p-8 text-center text-xs text-gray-600">
-              File ini kosong atau tidak memiliki konten
+              This file is empty or has no content
             </div>
           )}
         </div>

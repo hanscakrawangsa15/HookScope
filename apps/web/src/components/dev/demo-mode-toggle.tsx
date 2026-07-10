@@ -70,12 +70,12 @@ export function DemoModeToggle() {
     setFundMsg(null);
     try {
       if (account.toLowerCase() === ACCOUNT0_ADDR.toLowerCase()) {
-        setFundMsg({ ok: false, text: "Kamu sudah menggunakan Account 0 — tidak perlu di-fund." });
+        setFundMsg({ ok: false, text: "You are already using Account 0 — no funding needed." });
         return;
       }
       await demoFundWallet(account);
       const ok = true;
-      if (!ok) throw new Error("anvil_setBalance gagal");
+      if (!ok) throw new Error("anvil_setBalance failed");
 
       // Also try to fund ERC20 tokens from the current page's pool (if available)
       // by loading deployed test tokens from the dev API
@@ -94,9 +94,9 @@ export function DemoModeToggle() {
         }
       } catch { /* test tokens not set up — ETH only is fine */ }
 
-      setFundMsg({ ok: true, text: `Wallet diberi 10 ETH${tokenMsg}. Balance akan update otomatis.` });
+      setFundMsg({ ok: true, text: `Wallet funded with 10 ETH${tokenMsg}. Balance will update automatically.` });
     } catch (e) {
-      setFundMsg({ ok: false, text: `Gagal: ${(e as Error).message.slice(0, 80)}` });
+      setFundMsg({ ok: false, text: `Failed: ${(e as Error).message.slice(0, 80)}` });
     } finally {
       setFunding(false);
     }
@@ -122,7 +122,7 @@ export function DemoModeToggle() {
           border: `1px solid ${isOnAnvil ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.12)"}`,
           color: isOnAnvil ? "#86efac" : "#6b7280",
         }}
-        title={isOnAnvil ? "Demo Mode aktif" : "Masuk ke Demo Mode (Anvil)"}
+        title={isOnAnvil ? "Demo Mode active" : "Enter Demo Mode (Anvil)"}
       >
         <FlaskConical size={12} className={isOnAnvil ? "text-emerald-400" : "text-gray-600"} />
         {isPending ? "Switching…" : isOnAnvil ? "Demo" : "Demo"}
@@ -142,14 +142,14 @@ export function DemoModeToggle() {
             style={{ background: "rgba(16,185,129,0.08)", borderBottom: "1px solid rgba(16,185,129,0.15)" }}>
             <div className="flex items-center gap-2">
               <FlaskConical size={13} className="text-emerald-400" />
-              <span className="text-emerald-300 font-bold text-[11px] uppercase tracking-wider">Demo Mode Aktif</span>
+              <span className="text-emerald-300 font-bold text-[11px] uppercase tracking-wider">Demo Mode Active</span>
             </div>
             <div className="flex items-center gap-2">
               {/* Anvil health indicator */}
               <div className="flex items-center gap-1 text-[10px]">
                 <span className={`w-1.5 h-1.5 rounded-full ${anvilStatus === "up" ? "bg-emerald-400 animate-pulse" : anvilStatus === "down" ? "bg-red-400" : "bg-yellow-500"}`} />
                 <span className={anvilStatus === "up" ? "text-emerald-400" : anvilStatus === "down" ? "text-red-400" : "text-gray-500"}>
-                  Anvil {anvilStatus === "up" ? "OK" : anvilStatus === "down" ? "MATI" : "..."}
+                  Anvil {anvilStatus === "up" ? "OK" : anvilStatus === "down" ? "DOWN" : "..."}
                 </span>
               </div>
               <button onClick={() => setOpen(false)} className="text-gray-600 hover:text-gray-300 cursor-pointer">
@@ -162,15 +162,15 @@ export function DemoModeToggle() {
           {anvilStatus === "down" && (
             <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl text-xs"
               style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)" }}>
-              <p className="text-red-300 font-semibold mb-1">⚠ Anvil tidak berjalan!</p>
+              <p className="text-red-300 font-semibold mb-1">⚠ Anvil is not running!</p>
               <p className="text-gray-400 text-[10px] leading-relaxed mb-2">
-                Quote dan transaksi akan gagal selama Anvil mati.
+                Quotes and transactions will fail while Anvil is down.
               </p>
               <p className="font-mono text-yellow-300 text-[10px] p-2 rounded bg-black/30">
                 pnpm anvil:start
               </p>
               <p className="text-gray-600 text-[10px] mt-1.5">
-                Jalankan di terminal baru, lalu tunggu "Listening on 127.0.0.1:8545".
+                Run in a new terminal and wait for "Listening on 127.0.0.1:8545".
               </p>
             </div>
           )}
@@ -198,13 +198,13 @@ export function DemoModeToggle() {
             {/* Fund Current Wallet */}
             <div>
               <p className="text-gray-600 text-[10px] uppercase font-semibold tracking-wider mb-2 flex items-center gap-1">
-                <Coins size={9} className="text-yellow-500" /> Fund Wallet Aktif
+                <Coins size={9} className="text-yellow-500" /> Fund Active Wallet
               </p>
               <div className="rounded-xl p-2.5 mb-2"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <p className="text-gray-600 text-[10px] mb-2 leading-relaxed">
-                  Wallet <span className="font-mono text-gray-500">{account?.slice(0,8)}…</span> tidak punya ETH di Anvil.
-                  Klik tombol di bawah untuk otomatis memberi 100 ETH (+ test tokens TTKA/TTKB jika sudah di-setup).
+                  Wallet <span className="font-mono text-gray-500">{account?.slice(0,8)}…</span> has no ETH on Anvil.
+                  Click the button below to automatically receive 100 ETH (+ test tokens TTKA/TTKB if already set up).
                 </p>
                 <button
                   onClick={fundWallet}
@@ -212,7 +212,7 @@ export function DemoModeToggle() {
                   className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50"
                   style={{ background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.35)", color: "#fde047" }}
                 >
-                  {funding ? <><Loader2 size={11} className="animate-spin" /> Funding…</> : <><Coins size={11} /> Beri 10 ETH ke Wallet Ini</>}
+                  {funding ? <><Loader2 size={11} className="animate-spin" /> Funding…</> : <><Coins size={11} /> Send 10 ETH to This Wallet</>}
                 </button>
                 {fundMsg && (
                   <p className={`text-[10px] mt-1.5 leading-relaxed ${fundMsg.ok ? "text-emerald-400" : "text-red-400"}`}>
@@ -242,13 +242,13 @@ export function DemoModeToggle() {
                       className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer"
                       style={{ background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)", color: "#c4b5fd" }}
                     >
-                      {copied === `k${acc.address}` ? <><Check size={10} className="text-emerald-400" /> Key disalin!</> : <><Copy size={10} /> Copy Private Key</>}
+                      {copied === `k${acc.address}` ? <><Check size={10} className="text-emerald-400" /> Key copied!</> : <><Copy size={10} /> Copy Private Key</>}
                     </button>
                   </div>
                 ))}
               </div>
               <p className="text-gray-700 text-[10px] mt-2">
-                MetaMask → ikon akun → Import Account → paste key
+                MetaMask → account icon → Import Account → paste key
               </p>
             </div>
 
@@ -259,7 +259,7 @@ export function DemoModeToggle() {
               className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all"
               style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#6ee7b7" }}
             >
-              <Zap size={11} /> Buka Test Pool → Swap &amp; Add Liquidity
+              <Zap size={11} /> Open Test Pool → Swap &amp; Add Liquidity
             </a>
 
             {/* Exit demo */}

@@ -67,7 +67,7 @@ export function AnvilDevPanel() {
 
   const connectAnvil = async () => {
     const eth = (window as { ethereum?: { request: (a: unknown) => Promise<unknown> } }).ethereum;
-    if (!eth) { alert("Wallet tidak ditemukan. Install MetaMask terlebih dahulu."); return; }
+    if (!eth) { alert("Wallet not found. Please install MetaMask first."); return; }
     setSwitching(true);
     try {
       await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ANVIL_CHAIN.chainId }] });
@@ -123,11 +123,11 @@ export function AnvilDevPanel() {
                   color: isOnAnvil ? "#86efac" : "#9ca3af",
                 }}
               >
-                {isOnAnvil ? "✅ Terhubung ke Anvil (31337)" : switching ? "Switching…" : "🔗 Hubungkan ke Anvil (31337)"}
+                {isOnAnvil ? "✅ Connected to Anvil (31337)" : switching ? "Switching…" : "🔗 Connect to Anvil (31337)"}
               </button>
               {!isOnAnvil && (
                 <p className="text-gray-600 mt-1 leading-relaxed" style={{ fontSize: 10 }}>
-                  Klik tombol di atas → MetaMask akan tambah dan switch ke chainId 31337 (localhost:8545).
+                  Click the button above → MetaMask will add and switch to chainId 31337 (localhost:8545).
                 </p>
               )}
             </section>
@@ -177,14 +177,14 @@ export function AnvilDevPanel() {
             <section>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5 text-gray-400 font-semibold uppercase tracking-wider" style={{ fontSize: 9 }}>
-                  <Coins size={10} className="text-orange-400" /> Test Tokens (setelah pnpm anvil:setup)
+                  <Coins size={10} className="text-orange-400" /> Test Tokens (after pnpm anvil:setup)
                 </div>
                 <button onClick={fetchTokens} className="text-gray-600 hover:text-gray-400 cursor-pointer" style={{ fontSize: 9 }}>↻ Refresh</button>
               </div>
 
               {addrError ? (
                 <div className="rounded-lg px-3 py-2 text-orange-400" style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", fontSize: 10 }}>
-                  Token belum di-deploy. Jalankan: <code className="font-mono">pnpm anvil:setup</code>
+                  Tokens not yet deployed. Run: <code className="font-mono">pnpm anvil:setup</code>
                 </div>
               ) : tokenAddrs ? (
                 <div className="space-y-1.5">
@@ -223,7 +223,7 @@ export function AnvilDevPanel() {
                   <div>chainId: <span className="text-cyan-400">31337</span></div>
                 </div>
                 <p className="text-gray-700 mt-1.5 leading-relaxed" style={{ fontSize: 10 }}>
-                  Jalankan <code>pnpm anvil:test</code> untuk inisialisasi pool ini.
+                  Run <code>pnpm anvil:test</code> to initialize this pool.
                 </p>
               </section>
             )}

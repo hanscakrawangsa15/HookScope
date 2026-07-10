@@ -33,15 +33,15 @@ export function SuggestRangeButton({
       });
       onApply({ tickLower: res.tickLower, tickUpper: res.tickUpper });
       if (res.usedFallback) {
-        setReasoning(`Belum cukup histori harga (${res.sampleSize} data) — menggunakan rentang default ±10%.`);
+        setReasoning(`Not enough price history (${res.sampleSize} data points) — using default range ±10%.`);
       } else {
-        const dir = res.trendBiasPct > 0 ? "naik" : res.trendBiasPct < 0 ? "turun" : "netral";
+        const dir = res.trendBiasPct > 0 ? "bullish" : res.trendBiasPct < 0 ? "bearish" : "neutral";
         setReasoning(
-          `Lebar ±${res.widthPct}% berdasarkan volatilitas, bias ${dir} ${Math.abs(res.trendBiasPct)}% mengikuti tren ${res.sampleSize} data harga terakhir.`
+          `Width ±${res.widthPct}% adjusted based on volatility, ${dir} bias ${Math.abs(res.trendBiasPct)}% following the trend of the last ${res.sampleSize} price data points.`
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal mengambil saran range");
+      setError(e instanceof Error ? e.message : "Failed to fetch range suggestion");
     } finally {
       setLoading(false);
     }

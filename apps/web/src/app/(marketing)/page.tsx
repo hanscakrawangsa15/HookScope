@@ -76,7 +76,7 @@ export default async function LandingPage() {
             style={{ borderColor: "rgba(16,185,129,0.35)", color: "#6ee7b7" }}
           >
             <Search size={14} />
-            Coba Anvil Demo ↓
+            Try Anvil Demo ↓
           </a>
         </div>
 

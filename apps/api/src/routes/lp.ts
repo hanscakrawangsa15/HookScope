@@ -105,13 +105,13 @@ function describeRpcError(err: unknown, chainId?: number): string {
   const msg = err instanceof Error ? err.message : String(err);
   // Detect Anvil-specific connection failures first
   if (chainId === 31337 && (/ECONNREFUSED|fetch failed|HTTP request failed/i.test(msg))) {
-    return "Anvil tidak berjalan. Jalankan: pnpm anvil:start — lalu refresh halaman.";
+    return "Anvil is not running. Run: pnpm anvil:start — then refresh the page.";
   }
   if (/rate limit/i.test(msg)) {
     return "RPC provider is rate-limiting requests right now — wait a few seconds and try again.";
   }
   if (/ECONNREFUSED|fetch failed/i.test(msg)) {
-    return "Tidak bisa terhubung ke RPC endpoint. Cek koneksi atau ganti ETHEREUM_RPC_URL di .env.";
+    return "Cannot connect to RPC endpoint. Check your connection or update ETHEREUM_RPC_URL in .env.";
   }
   return msg.split("\n")[0].slice(0, 300);
 }

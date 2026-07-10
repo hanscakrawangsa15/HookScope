@@ -108,8 +108,8 @@ export default async function StatsPage() {
           <div>
             <h2 className="text-2xl font-bold text-white">Fee Leaderboard</h2>
             <p className="text-gray-400 text-sm mt-0.5">
-              Bandingkan fee LP, fee protokol, dan estimasi APY di semua pool Uniswap V4.
-              Bantu LP memilih pair dengan fee tertinggi atau terendah.
+              Compare LP fees, protocol fees, and estimated APY across all Uniswap V4 pools.
+              Helps LPs choose the pair with the highest or lowest fee.
             </p>
           </div>
         </div>

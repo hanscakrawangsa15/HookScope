@@ -131,11 +131,11 @@ export function FeeLeaderboard({ defaultChainId }: { defaultChainId?: number }) 
         style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
         <Info size={11} className="text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-gray-400 leading-relaxed">
-          <span className="text-blue-300 font-semibold">Fee Structure Uniswap V4: </span>
-          <strong className="text-white">LP Fee</strong> = fee yang LP terima per swap.{" "}
-          <strong className="text-white">Protocol Fee</strong> = potongan kecil dari LP fee untuk protokol (biasanya 0).{" "}
-          <strong className="text-white">Fee APY</strong> = estimasi APY tahunan dari data feeGrowthGlobals on-chain.{" "}
-          Pool dengan hook <span className="text-orange-300">delta-returns</span> mungkin ada fee tambahan dari hook.
+          <span className="text-blue-300 font-semibold">Uniswap V4 Fee Structure: </span>
+          <strong className="text-white">LP Fee</strong> = fee earned by LPs per swap.{" "}
+          <strong className="text-white">Protocol Fee</strong> = small cut from LP fee for the protocol (usually 0).{" "}
+          <strong className="text-white">Fee APY</strong> = annualized APY estimate from on-chain feeGrowthGlobals data.{" "}
+          Pools with <span className="text-orange-300">delta-return</span> hooks may have additional hook fees.
         </div>
       </div>
 
@@ -155,7 +155,7 @@ export function FeeLeaderboard({ defaultChainId }: { defaultChainId?: number }) 
         {/* Rows */}
         {pools.length === 0 ? (
           <div className="text-center py-8 text-gray-600 text-sm">
-            Tidak ada data. Pastikan indexer berjalan dan pool memiliki TVL.
+            No data. Make sure the indexer is running and pools have TVL.
           </div>
         ) : pools.map((pool, i) => {
           const pair = `${pool.token0Symbol ?? "?"} / ${pool.token1Symbol ?? "?"}`;
@@ -238,8 +238,8 @@ export function FeeLeaderboard({ defaultChainId }: { defaultChainId?: number }) 
       </div>
 
       <p className="text-[10px] text-gray-700 text-center">
-        Fee APY dihitung dari <code>feeGrowthGlobals</code> on-chain × liquidity ÷ 2¹²⁸ ÷ TVL × 365.
-        Semakin tinggi Fee APY, semakin banyak fee yang dihasilkan per dollar likuiditas.
+        Fee APY is calculated from on-chain <code>feeGrowthGlobals</code> × liquidity ÷ 2¹²⁸ ÷ TVL × 365.
+        Higher Fee APY means more fees earned per dollar of liquidity.
       </p>
     </div>
   );

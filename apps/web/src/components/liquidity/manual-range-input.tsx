@@ -45,11 +45,11 @@ export function ManualRangeInput({
     const minPrice = Number(minPriceStr);
     const maxPrice = Number(maxPriceStr);
     if (!minPriceStr || !maxPriceStr || !(minPrice > 0) || !(maxPrice > 0)) {
-      setError("Masukkan harga min dan max yang valid");
+      setError("Enter valid min and max prices");
       return;
     }
     if (minPrice >= maxPrice) {
-      setError("Harga min harus lebih kecil dari harga max");
+      setError("Min price must be less than max price");
       return;
     }
     setError(null);
@@ -63,9 +63,9 @@ export function ManualRangeInput({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] text-gray-500">Range manual ({symbolB} per {symbolA})</span>
+        <span className="text-[10px] text-gray-500">Manual range ({symbolB} per {symbolA})</span>
         {currentPrice != null && (
-          <span className="text-[10px] text-gray-600">Harga saat ini: {currentPrice.toPrecision(6)}</span>
+          <span className="text-[10px] text-gray-600">Current price: {currentPrice.toPrecision(6)}</span>
         )}
       </div>
       <div className="flex items-center gap-1.5">
@@ -87,7 +87,7 @@ export function ManualRangeInput({
           className="text-[10px] px-2 py-1.5 rounded-lg cursor-pointer whitespace-nowrap"
           style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd" }}
         >
-          Terapkan
+          Apply
         </button>
       </div>
       {error && <p className="text-[10px] text-red-400 px-1">{error}</p>}

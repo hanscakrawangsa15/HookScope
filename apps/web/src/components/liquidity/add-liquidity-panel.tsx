@@ -318,7 +318,7 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
         await refetchAllowance1();
       }
     } catch (e) {
-      setTxError(e instanceof Error ? e.message : "Auto-approve gagal — cek Anvil berjalan");
+      setTxError(e instanceof Error ? e.message : "Auto-approve failed — check that Anvil is running");
       setDemoApproving(false);
       return;
     }
@@ -364,16 +364,16 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
         const isTransferFail = /TRANSFER_FROM_FAILED|transfer/i.test(errMsg);
         throw new Error(
           isTransferFail
-            ? `Token tidak bisa di-transfer (mungkin belum ada di fork ini). ` +
-              `Coba pakai Test Pool: /hooks/0x0000...0000?chainId=31337`
-            : `Simulasi LP gagal: ${errMsg.slice(0, 120)}`
+            ? `Token cannot be transferred (it may not exist on this fork). ` +
+              `Try using the Test Pool: /hooks/0x0000...0000?chainId=31337`
+            : `LP simulation failed: ${errMsg.slice(0, 120)}`
         );
       }
     } catch (simErr) {
       if (simErr instanceof TypeError) {
         // fetch failed = Anvil not running, skip simulation and let MetaMask handle
       } else {
-        setTxError(simErr instanceof Error ? simErr.message : "Simulasi gagal");
+        setTxError(simErr instanceof Error ? simErr.message : "Simulation failed");
         setDemoApproving(false);
         return;
       }
@@ -402,8 +402,8 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
           <div className="flex-1">
             <span className="text-yellow-300">DEMO MODE — Anvil Fork (chainId 31337)</span>
             <p className="text-yellow-700 text-[10px] font-normal mt-0.5">
-              Transaksi dikirim ke local fork — tidak ada ETH/token asli yang terpakai.
-              Aman untuk testing tanpa risiko.
+              Transactions are sent to a local fork — no real ETH or tokens are used.
+              Safe for testing with no risk.
             </p>
           </div>
         </div>
@@ -487,12 +487,12 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
                 style={{ background: "rgba(234,179,8,0.06)", border: "1px dashed rgba(234,179,8,0.35)" }}>
                 <div className="flex items-center gap-2">
                   <span>🧪</span>
-                  <span className="text-yellow-300 font-bold">DEMO MODE AKTIF — Anvil Fork</span>
+                  <span className="text-yellow-300 font-bold">DEMO MODE ACTIVE — Anvil Fork</span>
                   <span className="ml-auto font-mono text-yellow-700 text-[10px]">chainId 31337</span>
                 </div>
                 <p className="text-yellow-800 text-[10px] leading-relaxed">
-                  MetaMask mungkin menampilkan "Tinjau peringatan" — ini <span className="text-yellow-600 font-semibold">normal dan aman di Demo Mode</span> karena transaksi
-                  dikirim ke Anvil fork, bukan mainnet. Tidak ada ETH/token asli yang digunakan.
+                  MetaMask may show a "Review warning" — this is <span className="text-yellow-600 font-semibold">normal and safe in Demo Mode</span> because transactions
+                  are sent to the Anvil fork, not mainnet. No real ETH or tokens are used.
                 </p>
               </div>
             )}
@@ -578,19 +578,19 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
                   <p className="text-[11px] text-orange-400">{quoteError}</p>
                   {/rate.limit/i.test(quoteError) && (
                     <div className="flex items-center gap-2">
-                      <p className="text-[10px] text-gray-500">RPC sedang ramai, tunggu sebentar.</p>
+                      <p className="text-[10px] text-gray-500">RPC is busy, please wait a moment.</p>
                       <button
                         onClick={() => { setQuoteError(null); handlePreset(rangePreset); }}
                         className="text-[10px] px-2 py-0.5 rounded cursor-pointer"
                         style={{ background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", color: "#a5b4fc" }}
                       >
-                        ↻ Coba Lagi
+                        ↻ Try Again
                       </button>
                     </div>
                   )}
                   {isAnvilForkMode && /HTTP request failed|Anvil/i.test(quoteError) && (
                     <p className="text-[10px] text-yellow-600">
-                      → Jalankan <code className="font-mono bg-black/20 px-1 rounded">pnpm anvil:start</code> di terminal, lalu refresh.
+                      → Run <code className="font-mono bg-black/20 px-1 rounded">pnpm anvil:start</code> in your terminal, then refresh.
                     </p>
                   )}
                 </div>
@@ -620,12 +620,12 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
                   {isAnvilForkMode && /0xd81b2f2e|execution reverted/i.test(txError) && (
                     <div className="text-[10px] text-yellow-600 leading-relaxed p-2 rounded"
                       style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.2)" }}>
-                      <p className="font-semibold text-yellow-500 mb-1">Hook mungkin memiliki pembatasan akses</p>
-                      <p>Hook ini (HookScore {hookScore}/100) memiliki custom logic yang mungkin menolak LP dari address ini.</p>
-                      <p className="mt-1">Untuk testing tanpa batasan, gunakan <strong>test pool</strong>:</p>
+                      <p className="font-semibold text-yellow-500 mb-1">Hook may have access restrictions</p>
+                      <p>This hook (HookScore {hookScore}/100) has custom logic that may reject LP positions from this address.</p>
+                      <p className="mt-1">To test without restrictions, use the <strong>test pool</strong>:</p>
                       <a href="/hooks/0x0000000000000000000000000000000000000000?chainId=31337"
                         className="text-yellow-400 hover:underline font-mono text-[10px]">
-                        → Buka Test Pool (no hook, chainId 31337)
+                        → Open Test Pool (no hook, chainId 31337)
                       </a>
                     </div>
                   )}
@@ -668,8 +668,8 @@ export function AddLiquidityPanel({ hookAddress, chainId, riskLevel, hookScore }
                   ) : building || sending || confirming ? (
                     <><Loader2 size={14} className="animate-spin" /> Adding Liquidity…</>
                   ) : (
-                    <>🧪 Add Liquidity (Demo — tanpa popup)</>
-                  )}
+                    <>🧪 Add Liquidity (Demo — no popup)</>
+)}
                 </button>
               ) : needsApproval0 ? (
                 <button

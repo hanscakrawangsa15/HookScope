@@ -35,9 +35,9 @@ async function anvilSendAndMine(from: string, to: string, data: string, gas = "0
   const receipt = await anvilRpc("eth_getTransactionReceipt", [sent.result]) as
     { result?: { status: string } | null; error?: { message: string } };
 
-  if (!receipt.result) throw new Error("TX não encontrada no receipt após mining");
+  if (!receipt.result) throw new Error("TX not found in receipt after mining");
   if (receipt.result.status !== "0x1") {
-    throw new Error(`TX reverted (status=0). Impersonated tx gagal.`);
+    throw new Error(`TX reverted (status=0). Impersonated transaction failed.`);
   }
 }
 
@@ -143,9 +143,9 @@ export async function demoFundToken(tokenAddress: string, userAddress: string, a
   const code = typeof codeCheck.result === "string" ? codeCheck.result : "0x";
   if (!code || code === "0x" || code.length <= 2) {
     throw new Error(
-      `Token ${tokenAddress.slice(0, 12)}… tidak punya bytecode di Anvil fork ini. ` +
-      `Kemungkinan belum di-deploy saat fork dilakukan. ` +
-      `Gunakan Test Pool /hooks/0x0000...0000?chainId=31337 sebagai gantinya.`
+      `Token ${tokenAddress.slice(0, 12)}… has no bytecode in this Anvil fork. ` +
+      `It was likely not deployed at the fork block. ` +
+      `Use the Test Pool at /hooks/0x0000...0000?chainId=31337 instead.`
     );
   }
 
@@ -199,9 +199,9 @@ export async function demoFundToken(tokenAddress: string, userAddress: string, a
   }
 
   throw new Error(
-    `Token ${tokenAddress.slice(0, 12)}… tidak bisa di-fund otomatis ` +
-    `(storage non-standar & tidak ada holder ditemukan di fork). ` +
-    `Gunakan Test Pool /hooks/0x0000...0000?chainId=31337 (TTKA/TTKB).`
+    `Token ${tokenAddress.slice(0, 12)}… cannot be funded automatically ` +
+    `(non-standard storage & no holders found in the fork). ` +
+    `Use the Test Pool at /hooks/0x0000...0000?chainId=31337 (TTKA/TTKB).`
   );
 }
 

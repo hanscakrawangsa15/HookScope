@@ -363,7 +363,7 @@ export function PoolRangeChart({
           {/* Empty state */}
           {!hasCandles && (
             <text x={VIEW_W / 2} y={VIEW_H / 2 + 4} textAnchor="middle" fontSize={11} fill="#4b5563">
-              Mengakumulasi data harga... (~20 detik)
+              Accumulating price data... (~20 seconds)
             </text>
           )}
 
@@ -437,7 +437,7 @@ export function PoolRangeChart({
           {/* X-axis labels */}
           {hasCandles && xLabelIndices.map(idx => (
             <text key={idx} x={xFor(idx)} y={VIEW_H - 8} fontSize={8} fill="#6b7280" textAnchor="middle">
-              {new Date(candles[idx].bucketStart).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+              {new Date(candles[idx].bucketStart).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
             </text>
           ))}
         </svg>
@@ -446,7 +446,7 @@ export function PoolRangeChart({
         {hovered && (
           <div className="absolute top-1 left-1 px-2 py-1.5 rounded-md pointer-events-none leading-relaxed text-[10px]"
             style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <div className="text-gray-500">{new Date(hovered.bucketStart).toLocaleTimeString("id-ID")}</div>
+            <div className="text-gray-500">{new Date(hovered.bucketStart).toLocaleTimeString("en-US")}</div>
             <div>O <span className="text-white">{formatPrice(hovered.open)}</span>{" "}
               H <span className="text-emerald-400">{formatPrice(hovered.high)}</span></div>
             <div>L <span className="text-red-400">{formatPrice(hovered.low)}</span>{" "}
@@ -459,11 +459,11 @@ export function PoolRangeChart({
       {/* Footer */}
       <div className="flex items-center gap-2 mt-1.5 text-[9px]">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-        <span className="text-gray-600">Chart statis · range interaktif</span>
+        <span className="text-gray-600">Static chart · interactive range</span>
         <span className="text-yellow-600 ml-1">─ SMA-7</span>
         {onRangeChange && (
           <span className="text-indigo-400 ml-1">
-            {fullRange ? "↕ Drag untuk set custom range" : "↕ Drag handle untuk ubah range"}
+            {fullRange ? "↕ Drag to set custom range" : "↕ Drag handles to adjust range"}
           </span>
         )}
       </div>
