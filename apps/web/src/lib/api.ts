@@ -208,6 +208,7 @@ export interface GlobalStats {
   unverifiedHooks: number;
   auditedHooks: number;
   flaggedHooks: number;
+  unauditedHooks: number;
   totalPools: number;
   hooksByChain: Record<string, number>;
   hooksByRisk: Record<string, number>;

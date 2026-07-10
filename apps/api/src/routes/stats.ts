@@ -32,6 +32,7 @@ statsRouter.get("/", async (c) => {
     verifiedHooks,
     auditedHooks,
     flaggedHooks,
+    unauditedHooks,
     totalPools,
     hooksByChain,
     hooksByRisk,
@@ -43,6 +44,7 @@ statsRouter.get("/", async (c) => {
     prisma.hook.count({ where: { isVerified: true } }),
     prisma.hook.count({ where: { auditStatus: "AUDITED" } }),
     prisma.hook.count({ where: { auditStatus: "FLAGGED" } }),
+    prisma.hook.count({ where: { auditStatus: "UNAUDITED" } }),
     prisma.pool.count(),
     prisma.hook.groupBy({ by: ["chainId"], _count: { id: true } }),
     prisma.hook.groupBy({ by: ["riskLevel"], _count: { id: true } }),
@@ -86,6 +88,7 @@ statsRouter.get("/", async (c) => {
     unverifiedHooks: totalHooks - verifiedHooks,
     auditedHooks,
     flaggedHooks,
+    unauditedHooks,
     totalPools,
     hooksByChain: hooksByChain.reduce((acc, row) => {
       acc[row.chainId] = row._count.id;

@@ -673,6 +673,34 @@ export default async function HookDetailPage({ params, searchParams }: PageProps
               <CheckItem ok={hook.proxyType === "NONE"} label="Non-upgradeable" invert />
               <CheckItem ok={!hasDeltaReturns} label="No custom accounting" invert />
               <CheckItem ok={activeCallbacks.length <= 4} label="Limited attack surface" invert />
+
+              {/* v4-core Architecture Audit banner */}
+              {hook.auditStatus === "AUDITED" && (
+                <div className="flex items-start gap-2 mt-1 p-2 rounded-lg bg-green-500/5 border border-green-500/20">
+                  <ShieldCheck size={13} className="text-green-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-green-300 font-medium text-[11px]">v4-core Permission Audit Passed</p>
+                    <p className="text-gray-500 text-[10px] leading-relaxed mt-0.5">
+                      Hook address encodes valid permission flags per Uniswap v4 architecture rules.
+                      Delta-return flags correctly depend on their required action flags.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {hook.auditStatus === "FLAGGED" && (
+                <div className="flex items-start gap-2 mt-1 p-2 rounded-lg bg-red-500/10 border border-red-500/25">
+                  <Skull size={13} className="text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-300 font-semibold text-[11px]">FLAGGED — Suspicious Permission Bits</p>
+                    <p className="text-gray-400 text-[10px] leading-relaxed mt-0.5">
+                      This hook has <strong className="text-red-300">all 14 permission bits</strong> set in its address,
+                      which is extremely rare for a legitimate hook. Real hooks only enable callbacks they implement.
+                      Claiming all permissions is a red flag for a malicious or misconfigured hook.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Hook authenticity validation */}
               {(() => {
                 const poolValidated = hook.poolCount > 0;
